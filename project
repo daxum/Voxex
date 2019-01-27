@@ -1,0 +1,158 @@
+#!/usr/bin/env bash
+
+###############################################################################
+#SGIS - A simple game involving squares
+#Copyright (C) 2017
+#
+#Forked and modified 2018/12/27
+#Forked again and modified some more 2019/01/26
+#
+#This program is free software: you can redistribute it and/or modify
+#it under the terms of the GNU Lesser General Public License as published by
+#the Free Software Foundation, either version 3 of the License, or
+#(at your option) any later version.
+#
+#This program is distributed in the hope that it will be useful,
+#but WITHOUT ANY WARRANTY; without even the implied warranty of
+#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#GNU Lesser General Public License for more details.
+#
+#You should have received a copy of the GNU Lesser General Public License
+#along with this program.  If not, see <http://www.gnu.org/licenses/>.
+###############################################################################
+
+RUN=0
+BUILD=0
+SETUP=0
+MODE="none"
+
+SPIRV_DIR="resources/shaders/spirv"
+EXEC_NAME="chunkTest"
+ENGINE_DIR="SGIS-Engine"
+ENGINE_UPSTREAM="https://github.com/daxum/${ENGINE_DIR}.git"
+
+function buildShader() {
+	glslangValidator -V -o $1.spv raw/$1
+
+	if [ $? -ne 0 ]; then
+		echo "Failed to compile shader, aborting!"
+		exit 1
+	fi
+}
+
+function build {
+	if [ $BUILD -eq 1 ]; then
+		#TODO: find way to do with cmake
+		OLD_DIR=$(pwd)
+		cd ../../${SPIRV_DIR}
+
+		#spir-v shaders go here
+		#(as "buildShader <shaderName>")
+		
+		cd "${OLD_DIR}"
+
+		echo "Building mode \"${MODE}\"..."
+		rm ${EXEC_NAME} > /dev/null 2>&1
+		make -j$(nproc)
+	fi
+}
+
+cd "$(dirname "$0")"
+
+for ((i=1;i<=$#;i++)); do
+	if [ ${!i} = "setup" ]; then
+		SETUP=1
+	elif [ ${!i} = "build" ]; then
+		BUILD=1
+	elif [ ${!i} = "run" ]; then
+		RUN=1
+	elif [ ${!i} = "release" ]; then
+		MODE="release"
+	elif [ ${!i} = "debug" ]; then
+		MODE="debug"
+	fi
+done;
+
+if [ ${SETUP} -eq 1 ]; then
+	echo "Use upstream engine?"
+	select USE_UPSTREAM_ENGINE in "Yes" "No"; do
+		case ${USE_UPSTREAM_ENGINE} in
+			Yes) git clone "${ENGINE_UPSTREAM}"; break;;
+			No) read -p "Enter engine repository directory: " ENGINE_DIR; break;;
+		esac
+	done
+
+	ADD_BULLET_INSTALL="-DUSE_INSTALLED_BULLET="
+	ADD_GLFW_INSTALL="-DUSE_INSTALLED_GLFW="
+
+	echo "Use installed bullet?"
+	select INSTALLED_BULLET in "Yes" "No"; do
+		case ${INSTALLED_BULLET} in
+			Yes) ADD_BULLET_INSTALL="${ADD_BULLET_INSTALL}ON"; break;;
+			No) ADD_BULLET_INSTALL="${ADD_BULLET_INSTALL}OFF"; break;;
+		esac
+	done
+
+	if [ "${INSTALLED_BULLET}" = "No" ]; then
+		read -p "Enter bullet directory: " BULLET_DIR
+		ADD_BULLET_INSTALL="${ADD_BULLET_INSTALL} -DBULLET_DIR=${BULLET_DIR} -DBULLET2_MULTITHREADING=ON -DBULLET2_USE_TBB_MULTITHREADING=ON"
+		ADD_BULLET_INSTALL="${ADD_BULLET_INSTALL} -DBUILD_CPU_DEMOS=OFF -DBULLET2_TBB_INCLUDE_DIR=${TBB_INC_DIR} -DBULLET2_TBB_LIB_DIR=${TBB_LIB_DIR}"
+		ADD_BULLET_INSTALL="${ADD_BULLET_INSTALL} -DBUILD_BULLET3=OFF -DBUILD_ENET=OFF -DBUILD_CLSOCKET=OFF -DBUILD_BULLET2_DEMOS=OFF -DBUILD_EXTRAS=OFF"
+		ADD_BULLET_INSTALL="${ADD_BULLET_INSTALL} -DINSTALL_LIBS=OFF -DBUILD_UNIT_TESTS=OFF -DINSTALL_CMAKE_FILES=OFF -DUSE_GLUT=OFF"
+	fi
+
+	echo "Use installed glfw?"
+	select INSTALLED_GLFW in "Yes" "No"; do
+		case ${INSTALLED_GLFW} in
+			Yes) ADD_GLFW_INSTALL="${ADD_GLFW_INSTALL}ON"; break;;
+			No) ADD_GLFW_INSTALL="${ADD_GLFW_INSTALL}OFF"; break;;
+		esac
+	done
+
+	if [ "${INSTALLED_GLFW}" = "No" ]; then
+		read -p "Enter glfw directory: " GLFW_DIR
+		ADD_GLFW_INSTALL="${ADD_GLFW_INSTALL} -DGLFW_DIR=${GLFW_DIR}"
+		ADD_GLFW_INSTALL="${ADD_GLFW_INSTALL} -DGLFW_BUILD_DOCS=OFF -DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_TESTS=OFF -DGLFW_INSTALL=OFF"
+	fi
+
+	read -p "Enter freetype 2 include directory: " FREETYPE_DIR
+	read -p "Enter tbb include directory: " TBB_INCLUDE
+	read -p "Enter tbb library directory: " TBB_LIB
+
+	CMAKE_VARS="-DENGINE_DIR=${ENGINE_DIR} ${ADD_BULLET_INSTALL} ${ADD_GLFW_INSTALL} -DFREETYPE_INCLUDE_DIR=${FREETYPE_DIR} -DBULLET2_TBB_INCLUDE_DIR=${TBB_INCLUDE} -DBULLET2_TBB_LIB_DIR=${TBB_LIB}"
+
+	echo "Setting up debug directory..."
+	mkdir debug > /dev/null 2>&1
+	cd debug
+	cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo ${CMAKE_VARS} ../src
+	cd ..
+
+	echo "Setting up release directory..."
+	mkdir release > /dev/null 2>&1
+	cd release
+	cmake -DCMAKE_BUILD_TYPE=Release ${CMAKE_VARS} ../src
+	cd ..
+	echo "Setup complete."
+fi
+
+if [ ${MODE} = "debug" ]; then
+	cd debug
+	build
+	if [ ${RUN} -eq 1 ]; then
+		export vblank_mode=0
+		export MESA_DEBUG="context"
+		export GALLIUM_HUD="cpu+GPU-load;.dfps;VRAM-usage"
+
+		./${EXEC_NAME}
+	fi
+elif [ ${MODE} = "release" ]; then
+	cd release
+	build
+	if [ ${RUN} -eq 1 ]; then
+		export GALLIUM_HUD="cpu+GPU-load;.dfps;VRAM-usage"
+		./${EXEC_NAME}
+	fi
+elif [ ${SETUP} -eq 0 ]; then
+	echo "Invalid mode, use \"debug\" or \"release\""
+fi
+
