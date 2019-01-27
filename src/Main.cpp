@@ -58,7 +58,7 @@ static const std::array<std::array<float, 3>, 20> colors = {
 	0.900f, 0.900f, 0.900f, //19
 };
 
-static const std::string seed = "Faster rendering!";
+static const std::string seed = "Bug search";
 
 //TODO: better hash
 glm::vec3 getGradient(std::array<int64_t, 3> pos) {

@@ -51,6 +51,14 @@ struct RegionFace {
 	bool fullyCovered() const { return coveredArea >= totalArea; }
 };
 
+inline std::ostream& operator<<(std::ostream& out, const RegionFace& face) {
+	out << "Face[" << (uint64_t)face.min.at(0) << ", " << (uint64_t)face.min.at(1) << " | " <<
+		(uint64_t)face.max.at(0) << ", " << (uint64_t)face.max.at(1) <<
+		" | Unused: " << (uint64_t)face.getUnusedAxis() << ", fixed: " << (uint64_t)face.fixedCoord << "]";
+
+	return out;
+}
+
 class RegionTree {
 public:
 	typedef std::array<std::vector<RegionFace>, 3> FaceList;

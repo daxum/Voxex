@@ -139,17 +139,17 @@ std::pair<RegionTree::FaceList, RegionTree::FaceList> RegionTree::genQuadsIntern
 		uint32_t zArea = (uint32_t)region.box.xLength() * (uint32_t)region.box.yLength();
 
 		//north
-		deduplicateAdd(currentFaces, {0x80, region.box.min.z, {region.box.min.x, region.box.min.y}, {region.box.max.x, region.box.max.y}, region.type, 0, zArea});
+		addFaceToList(currentFaces, {0x80, region.box.min.z, {region.box.min.x, region.box.min.y}, {region.box.max.x, region.box.max.y}, region.type, 0, zArea});
 		//east
-		deduplicateAdd(currentFaces, {0x01, region.box.min.x, {region.box.min.y, region.box.min.z}, {region.box.max.y, region.box.max.z}, region.type, 0, xArea});
+		addFaceToList(currentFaces, {0x01, region.box.min.x, {region.box.min.y, region.box.min.z}, {region.box.max.y, region.box.max.z}, region.type, 0, xArea});
 		//south
-		deduplicateAdd(currentFaces, {0x82, region.box.max.z, {region.box.min.x, region.box.min.y}, {region.box.max.x, region.box.max.y}, region.type, 0, zArea});
+		addFaceToList(currentFaces, {0x82, region.box.max.z, {region.box.min.x, region.box.min.y}, {region.box.max.x, region.box.max.y}, region.type, 0, zArea});
 		//west
-		deduplicateAdd(currentFaces, {0x03, region.box.max.x, {region.box.min.y, region.box.min.z}, {region.box.max.y, region.box.max.z}, region.type, 0, xArea});
+		addFaceToList(currentFaces, {0x03, region.box.max.x, {region.box.min.y, region.box.min.z}, {region.box.max.y, region.box.max.z}, region.type, 0, xArea});
 		//up
-		deduplicateAdd(currentFaces, {0x44, region.box.max.y, {region.box.min.x, region.box.min.z}, {region.box.max.x, region.box.max.z}, region.type, 0, yArea});
+		addFaceToList(currentFaces, {0x44, region.box.max.y, {region.box.min.x, region.box.min.z}, {region.box.max.x, region.box.max.z}, region.type, 0, yArea});
 		//down
-		deduplicateAdd(currentFaces, {0x45, region.box.min.y, {region.box.min.x, region.box.min.z}, {region.box.max.x, region.box.max.z}, region.type, 0, yArea});
+		addFaceToList(currentFaces, {0x45, region.box.min.y, {region.box.min.x, region.box.min.z}, {region.box.max.x, region.box.max.z}, region.type, 0, yArea});
 	}
 
 	//Sort into inner and outer
