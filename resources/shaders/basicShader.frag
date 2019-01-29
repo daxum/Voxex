@@ -24,10 +24,11 @@ in vec3 pos;
 in vec3 color;
 in vec3 normal;
 
+uniform vec3 lightDir;
+
 vec3 directionalBlinnPhong() {
 	vec3 norm = normalize(normal);
 	vec3 position = -normalize(pos);
-	vec3 lightDir = normalize(vec3(-1.0, -1.0, 1.0));
 
 	vec3 ambient = color;
 	vec3 diffuse = color * max(0, dot(lightDir, norm));

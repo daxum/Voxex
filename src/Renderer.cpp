@@ -106,6 +106,11 @@ void Render::render() {
 	uniformLoc = glGetUniformLocation(prog, "projection");
 	glUniformMatrix4fv(uniformLoc, 1, GL_FALSE, glm::value_ptr(proj));
 
+	uniformLoc = glGetUniformLocation(prog, "lightDir");
+	glm::vec3 sunDir = glm::normalize(glm::vec3(-1.0, -1.0, 1.0));
+	sunDir = glm::vec3(view * glm::vec4(sunDir, 0.0));
+	glUniform3fv(uniformLoc, 1, glm::value_ptr(sunDir));
+
 	glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, (void*) 0);
 }
 
