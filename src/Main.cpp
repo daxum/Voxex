@@ -38,13 +38,13 @@ int main(int argc, char** argv) {
 	config.generalLog.mask = DEBUG | INFO | WARN | ERROR | FATAL;
 
 	config.rendererLog.type = LogType::STDOUT;
-	config.rendererLog.mask = DEBUG | INFO | WARN | ERROR | FATAL;
+	config.rendererLog.mask = INFO | WARN | ERROR | FATAL;
 
 	config.loaderLog.type = LogType::STDOUT;
 	config.loaderLog.mask = DEBUG | INFO | WARN | ERROR | FATAL;
 
 	config.modelLog.type = LogType::STDOUT;
-	config.modelLog.mask = DEBUG | INFO | WARN | ERROR | FATAL;
+	config.modelLog.mask = INFO | WARN | ERROR | FATAL;
 
 	config.componentLog.type =  LogType::STDOUT;
 	config.componentLog.mask = DEBUG | INFO | WARN | ERROR | FATAL;

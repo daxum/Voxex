@@ -159,7 +159,7 @@ void Voxex::loadScreens(DisplayEngine& display) {
 		Chunk chunk = genChunk(Pos_t{256*i-256*(maxI/2), 256*j-256*(maxJ/2), 256*k-256*(maxK/2)});
 		double end = ExMath::getTimeMillis();
 
-		std::cout << "Generated in " << end - start << "ms\n";
+		std::cout << "Generated chunk " << val << " in " << end - start << "ms\n";
 
 		double genExpect = 0.0;
 		double genAdd = 0.0;
@@ -169,21 +169,11 @@ void Voxex::loadScreens(DisplayEngine& display) {
 			genAdd = end - start + genExpect;
 		} while (!genTime.compare_exchange_strong(genExpect, genAdd, std::memory_order_relaxed));
 
-		size_t oldCount = chunk.regionCount();
-
-		std::cout << "Starting with " << chunk.regionCount() << " regions!\n";
-		chunk.printStats();
+		size_t startCount = chunk.regionCount();
 
 		chunk.optimize();
-		size_t pass = 2;
 
-		while(oldCount != chunk.regionCount()) {
-			oldCount = chunk.regionCount();
-			chunk.optimize();
-			pass++;
-		}
-
-		std::cout << "Reduced to " << chunk.regionCount() << " regions in " << pass << " passes\n";
+		std::cout << "Reduced from " << startCount << " to " << chunk.regionCount() << " regions\n";
 
 		chunk.validate();
 		chunk.printStats();
@@ -203,13 +193,6 @@ void Voxex::loadScreens(DisplayEngine& display) {
 		totalRegions += chunks.at(i).regionCount();
 		totalMemUsage += chunks.at(i).getMemUsage();
 	}
-
-
-	std::cout << "Generated in " << genTime.load() << "ms (" << genTime.load() / (maxI*maxJ*maxK) << "ms per chunk)!\n";
-	std::cout << "Generation completed in " << createTime << "ms\n";
-	std::cout << "Generated " << totalRegions << " regions\n";
-	//Yes, I know the correct term
-	std::cout << "Chunks using around " << (totalMemUsage >> 10) << " kilobytes in total\n";
 
 //TODO: Multithread face generation only - can't upload off the main thread in opengl
 for (size_t val = 0; val < chunks.size(); val++) {
@@ -233,6 +216,12 @@ for (size_t val = 0; val < chunks.size(); val++) {
 
 		std::cout << "Chunk " << val << " complete!\n";
 	}//);
+
+	std::cout << "Generated in " << genTime.load() << "ms (" << genTime.load() / (maxI*maxJ*maxK) << "ms per chunk)!\n";
+	std::cout << "Generation completed in " << createTime << "ms\n";
+	std::cout << "Generated " << totalRegions << " regions\n";
+	//Yes, I know the correct term
+	std::cout << "Chunks using around " << (totalMemUsage >> 10) << " kilobytes in total\n";
 
 	constexpr float dist = 1800.0f;
 	constexpr float center = 0.0f;

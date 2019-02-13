@@ -89,8 +89,6 @@ size_t RegionTree::size() const {
 }
 
 std::vector<RegionFace> RegionTree::genQuads() const {
-	std::cout << "Originally at " << (size() * 6) << " faces!\n";
-
 	double start = ExMath::getTimeMillis();
 
 	auto vecs = genQuadsInternal();
@@ -98,8 +96,8 @@ std::vector<RegionFace> RegionTree::genQuads() const {
 
 	double end = ExMath::getTimeMillis();
 
-	std::cout << "Reduced to " << faces.size() << " faces!\n";
-	std::cout << "Generate faces completed in " << (end-start) << "ms\n";
+	std::cout << "Reduced from " << (size() * 6) << " to " << faces.size() << " faces - " <<
+				 "completed in " << (end-start) << "ms\n";
 
 	return faces;
 }
