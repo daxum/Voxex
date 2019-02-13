@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
 
-#version 450 core
+#version 410 core
 
 layout (location = 0) in vec3 posIn;
 layout (location = 1) in vec3 normalIn;
@@ -25,13 +25,16 @@ layout (location = 2) in vec3 colorIn;
 out vec3 pos;
 out vec3 color;
 out vec3 normal;
+out vec3 lightDir;
 
 uniform mat4 view;
 uniform mat4 projection;
+uniform mat4 modelView;
 
 void main() {
-	gl_Position = projection * view * vec4(posIn, 1.0);
-	normal = vec3(view * vec4(normalIn, 0.0));
+	gl_Position = projection * modelView * vec4(posIn, 1.0);
+	normal = vec3(modelView * vec4(normalIn, 0.0));
 	color = colorIn;
-	pos = vec3(view * vec4(posIn, 1.0));
+	lightDir = (view * vec4(normalize(vec3(-1.0, -1.0, 1.0)), 0.0)).xyz;
+	pos = vec3(modelView * vec4(posIn, 1.0));
 }

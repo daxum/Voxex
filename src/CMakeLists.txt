@@ -14,10 +14,10 @@ find_package(glfw3 REQUIRED)
 
 add_executable(chunkTest
 	Main.cpp
-	Renderer.cpp
-	gl_core_4_5.c
 	RegionTree.cpp
 	Chunk.cpp
+	Voxex.cpp
+	Perlin.cpp
 )
 
 set_target_properties(chunkTest PROPERTIES

@@ -16,26 +16,21 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
 
-#version 410 core
+#pragma once
 
-out vec4 outColor;
+//Buffers
 
-in vec3 pos;
-in vec3 color;
-in vec3 normal;
-in vec3 lightDir;
+const char* const CHUNK_BUFFER = "chnkBfr";
 
-vec3 directionalBlinnPhong() {
-	vec3 norm = normalize(normal);
-	vec3 position = -normalize(pos);
+//Buffer elements
 
-	vec3 ambient = color;
-	vec3 diffuse = color * max(0, dot(lightDir, norm));
-	vec3 specular = color * pow(max(0, dot(normalize(lightDir + position), norm)), 200.0);
+const char* const VERTEX_ELEMENT_COLOR = "col";
 
-	return ambient + diffuse + specular;
-}
+//Shaders
 
-void main() {
-	outColor = vec4(directionalBlinnPhong(), 1.0);
-}
+const char* const CHUNK_SHADER = "chnkSdr";
+
+//Uniform sets
+
+const char* const CHUNK_SET = "chnkSet";
+const char* const SCREEN_SET = "scrnSet";

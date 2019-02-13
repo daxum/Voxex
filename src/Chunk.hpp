@@ -18,10 +18,9 @@
 
 #pragma once
 
-#include <queue>
-
 #include "AxisAlignedBB.hpp"
 #include "RegionTree.hpp"
+#include "Model.hpp"
 
 typedef Aabb<int64_t>::vec_t Pos_t;
 
@@ -30,11 +29,10 @@ struct Region {
 	Aabb<int64_t> box;
 };
 
-struct ChunkVertex {
-	glm::vec3 position;
-	//TODO: compress into single uint16_t or smaller
-	glm::vec3 normal;
-	std::array<float, 3> color;
+struct ChunkMeshData {
+	std::string name;
+	Mesh mesh;
+	Model model;
 };
 
 class Chunk {
@@ -52,7 +50,7 @@ public:
 	 * @param colors The colors for the regions.
 	 * @return The chunk's mesh data.
 	 */
-	std::pair<std::vector<ChunkVertex>, std::vector<uint32_t>> generateMesh(const std::array<std::array<float, 3>, 20>& colors);
+	ChunkMeshData generateModel(const std::array<std::array<float, 3>, 20>& colors);
 
 	/**
 	 * Returns the number of regions in the chunk.

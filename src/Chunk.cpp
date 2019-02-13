@@ -17,6 +17,8 @@
  ******************************************************************************/
 
 #include "Chunk.hpp"
+#include "Engine.hpp"
+#include "Names.hpp"
 
 namespace {
 	/**
@@ -68,65 +70,85 @@ void Chunk::addRegion(const Region& reg) {
 	regions.addRegions(addVec);
 }
 
-std::pair<std::vector<ChunkVertex>, std::vector<uint32_t>> Chunk::generateMesh(const std::array<std::array<float, 3>, 20>& colors) {
+ChunkMeshData Chunk::generateModel(const std::array<std::array<float, 3>, 20>& colors) {
 	std::vector<RegionFace> faces = regions.genQuads();
 
-	std::vector<ChunkVertex> vertices;
+	std::vector<Vertex> vertices;
 	std::vector<uint32_t> indices;
+
+	//TODO: find better way to get this sort of stuff
+	VertexBuffer& buffer = Engine::instance->getModelManager().getMemoryManager()->getBuffer(CHUNK_BUFFER);
 
 	for (const RegionFace& face : faces) {
 		size_t baseIndex = vertices.size();
 
+		glm::vec3 normal;
+		std::array<glm::vec3, 4> positions;
+
 		switch (face.getNormal()) {
 			//Facing -z
 			case 0: {
-				glm::vec3 normal(0.0, 0.0, -1.0);
-				vertices.push_back(ChunkVertex{{face.min.at(0), face.min.at(1), face.fixedCoord}, normal, colors.at(face.type)});
-				vertices.push_back(ChunkVertex{{face.min.at(0), face.max.at(1), face.fixedCoord}, normal, colors.at(face.type)});
-				vertices.push_back(ChunkVertex{{face.max.at(0), face.min.at(1), face.fixedCoord}, normal, colors.at(face.type)});
-				vertices.push_back(ChunkVertex{{face.max.at(0), face.max.at(1), face.fixedCoord}, normal, colors.at(face.type)});
+				normal = glm::vec3(0.0, 0.0, -1.0);
+				positions.at(0) = {face.min.at(0), face.min.at(1), face.fixedCoord};
+				positions.at(1) = {face.min.at(0), face.max.at(1), face.fixedCoord};
+				positions.at(2) = {face.max.at(0), face.min.at(1), face.fixedCoord};
+				positions.at(3) = {face.max.at(0), face.max.at(1), face.fixedCoord};
 			} break;
 			//Facing -x
 			case 1: {
-				glm::vec3 normal(-1.0, 0.0, 0.0);
-				vertices.push_back(ChunkVertex{{face.fixedCoord, face.min.at(0), face.max.at(1)}, normal, colors.at(face.type)});
-				vertices.push_back(ChunkVertex{{face.fixedCoord, face.max.at(0), face.max.at(1)}, normal, colors.at(face.type)});
-				vertices.push_back(ChunkVertex{{face.fixedCoord, face.min.at(0), face.min.at(1)}, normal, colors.at(face.type)});
-				vertices.push_back(ChunkVertex{{face.fixedCoord, face.max.at(0), face.min.at(1)}, normal, colors.at(face.type)});
+				normal = glm::vec3(-1.0, 0.0, 0.0);
+				positions.at(0) = {face.fixedCoord, face.min.at(0), face.max.at(1)};
+				positions.at(1) = {face.fixedCoord, face.max.at(0), face.max.at(1)};
+				positions.at(2) = {face.fixedCoord, face.min.at(0), face.min.at(1)};
+				positions.at(3) = {face.fixedCoord, face.max.at(0), face.min.at(1)};
 			} break;
 			//Facing +z
 			case 2: {
-				glm::vec3 normal(0.0, 0.0, 1.0);
-				vertices.push_back(ChunkVertex{{face.max.at(0), face.min.at(1), face.fixedCoord}, normal, colors.at(face.type)});
-				vertices.push_back(ChunkVertex{{face.max.at(0), face.max.at(1), face.fixedCoord}, normal, colors.at(face.type)});
-				vertices.push_back(ChunkVertex{{face.min.at(0), face.min.at(1), face.fixedCoord}, normal, colors.at(face.type)});
-				vertices.push_back(ChunkVertex{{face.min.at(0), face.max.at(1), face.fixedCoord}, normal, colors.at(face.type)});
+				normal = glm::vec3(0.0, 0.0, 1.0);
+				positions.at(0) = {face.max.at(0), face.min.at(1), face.fixedCoord};
+				positions.at(1) = {face.max.at(0), face.max.at(1), face.fixedCoord};
+				positions.at(2) = {face.min.at(0), face.min.at(1), face.fixedCoord};
+				positions.at(3) = {face.min.at(0), face.max.at(1), face.fixedCoord};
 			} break;
 			//Facing +x
 			case 3: {
-				glm::vec3 normal(1.0, 0.0, 0.0);
-				vertices.push_back(ChunkVertex{{face.fixedCoord, face.max.at(0), face.max.at(1)}, normal, colors.at(face.type)});
-				vertices.push_back(ChunkVertex{{face.fixedCoord, face.min.at(0), face.max.at(1)}, normal, colors.at(face.type)});
-				vertices.push_back(ChunkVertex{{face.fixedCoord, face.max.at(0), face.min.at(1)}, normal, colors.at(face.type)});
-				vertices.push_back(ChunkVertex{{face.fixedCoord, face.min.at(0), face.min.at(1)}, normal, colors.at(face.type)});
+				normal = glm::vec3(1.0, 0.0, 0.0);
+				positions.at(0) = {face.fixedCoord, face.max.at(0), face.max.at(1)};
+				positions.at(1) = {face.fixedCoord, face.min.at(0), face.max.at(1)};
+				positions.at(2) = {face.fixedCoord, face.max.at(0), face.min.at(1)};
+				positions.at(3) = {face.fixedCoord, face.min.at(0), face.min.at(1)};
 			} break;
 			//Facing +y
 			case 4: {
-				glm::vec3 normal(0.0, 1.0, 0.0);
-				vertices.push_back(ChunkVertex{{face.min.at(0), face.fixedCoord, face.min.at(1)}, normal, colors.at(face.type)});
-				vertices.push_back(ChunkVertex{{face.min.at(0), face.fixedCoord, face.max.at(1)}, normal, colors.at(face.type)});
-				vertices.push_back(ChunkVertex{{face.max.at(0), face.fixedCoord, face.min.at(1)}, normal, colors.at(face.type)});
-				vertices.push_back(ChunkVertex{{face.max.at(0), face.fixedCoord, face.max.at(1)}, normal, colors.at(face.type)});
+				normal = glm::vec3(0.0, 1.0, 0.0);
+				positions.at(0) = {face.min.at(0), face.fixedCoord, face.min.at(1)};
+				positions.at(1) = {face.min.at(0), face.fixedCoord, face.max.at(1)};
+				positions.at(2) = {face.max.at(0), face.fixedCoord, face.min.at(1)};
+				positions.at(3) = {face.max.at(0), face.fixedCoord, face.max.at(1)};
 			} break;
 			//Facing -y
 			case 5: {
-				glm::vec3 normal(0.0, -1.0, 0.0);
-				vertices.push_back(ChunkVertex{{face.min.at(0), face.fixedCoord, face.max.at(1)}, normal, colors.at(face.type)});
-				vertices.push_back(ChunkVertex{{face.min.at(0), face.fixedCoord, face.min.at(1)}, normal, colors.at(face.type)});
-				vertices.push_back(ChunkVertex{{face.max.at(0), face.fixedCoord, face.max.at(1)}, normal, colors.at(face.type)});
-				vertices.push_back(ChunkVertex{{face.max.at(0), face.fixedCoord, face.min.at(1)}, normal, colors.at(face.type)});
+				normal = glm::vec3(0.0, -1.0, 0.0);
+				positions.at(0) = {face.min.at(0), face.fixedCoord, face.max.at(1)};
+				positions.at(1) = {face.min.at(0), face.fixedCoord, face.min.at(1)};
+				positions.at(2) = {face.max.at(0), face.fixedCoord, face.max.at(1)};
+				positions.at(3) = {face.max.at(0), face.fixedCoord, face.min.at(1)};
 			} break;
 			default: throw std::runtime_error("Extra direction?!");
+		}
+
+		for (size_t i = 0; i < positions.size(); i++) {
+			//Center the chunk, invert z
+			positions.at(i) -= glm::vec3(128, 128, 128);
+			positions.at(i).z = -positions.at(i).z;
+
+			glm::vec3 color(colors.at(face.type).at(0), colors.at(face.type).at(1), colors.at(face.type).at(2));
+
+			Vertex vert = buffer.getVertex();
+			vert.setVec3(VERTEX_ELEMENT_POSITION, positions.at(i));
+			vert.setVec3(VERTEX_ELEMENT_NORMAL, normal);
+			vert.setVec3(VERTEX_ELEMENT_COLOR, color);
+			vertices.push_back(vert);
 		}
 
 		indices.push_back(baseIndex + 1);
@@ -137,12 +159,22 @@ std::pair<std::vector<ChunkVertex>, std::vector<uint32_t>> Chunk::generateMesh(c
 		indices.push_back(baseIndex + 2);
 	}
 
-	for (ChunkVertex& vert : vertices) {
-		vert.position = vert.position + glm::vec3(box.min);
-		vert.position.z = -vert.position.z;
-	}
+	std::string modelName = "Chunk_" + std::to_string(box.min.x) + "_" + std::to_string(box.min.y) + "_" + std::to_string(box.min.z);
 
-	return {vertices, indices};
+	ChunkMeshData out = {
+		modelName,
+		Mesh(CHUNK_BUFFER, {
+			{VERTEX_ELEMENT_POSITION, VertexElementType::VEC3},
+			{VERTEX_ELEMENT_NORMAL, VertexElementType::VEC3},
+			{VERTEX_ELEMENT_COLOR, VertexElementType::VEC3}},
+			vertices,
+			indices,
+			box,
+			std::sqrt(std::sqrt(255*255 + 255*255)*std::sqrt(255*255 + 255*255) + 255*255)),
+		Model(modelName, modelName, CHUNK_SHADER, CHUNK_SET, UniformSet{UniformSetType::MODEL_STATIC, 1024, {}})
+	};
+
+	return out;
 }
 
 void Chunk::printStats() {

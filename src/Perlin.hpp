@@ -16,26 +16,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
 
-#version 410 core
+#pragma once
 
-out vec4 outColor;
+#include <array>
+#include <cstdint>
 
-in vec3 pos;
-in vec3 color;
-in vec3 normal;
-in vec3 lightDir;
+#include "AxisAlignedBB.hpp"
 
-vec3 directionalBlinnPhong() {
-	vec3 norm = normalize(normal);
-	vec3 position = -normalize(pos);
+float perlin1D(int64_t point);
 
-	vec3 ambient = color;
-	vec3 diffuse = color * max(0, dot(lightDir, norm));
-	vec3 specular = color * pow(max(0, dot(normalize(lightDir + position), norm)), 200.0);
+float perlin2D(std::array<int64_t, 2> point);
 
-	return ambient + diffuse + specular;
-}
-
-void main() {
-	outColor = vec4(directionalBlinnPhong(), 1.0);
-}
+float perlin3D(Aabb<int64_t>::vec_t point, int64_t gridScale);
