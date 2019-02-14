@@ -18,6 +18,8 @@ add_executable(chunkTest
 	Chunk.cpp
 	Voxex.cpp
 	Perlin.cpp
+	SquareCamera.cpp
+	ControlledAI.cpp
 )
 
 set_target_properties(chunkTest PROPERTIES

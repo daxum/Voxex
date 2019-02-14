@@ -29,6 +29,8 @@
 #include "AnimatedCamera.hpp"
 #include "Names.hpp"
 #include "DefaultCamera.hpp"
+#include "ControlledAI.hpp"
+#include "SquareCamera.hpp"
 
 //TODO: This stuff goes elsewhere, most likely in its own class
 namespace {
@@ -74,7 +76,7 @@ namespace {
 			Aabb<int64_t> box = regions.top();
 			regions.pop();
 
-			constexpr int64_t minEdge = 1;
+			constexpr int64_t minEdge = 4;
 			constexpr float fillThreshold = 0.20f;
 			constexpr float cutoffScale = 72.0f;
 			constexpr float discardThreshold = 0.37f;
@@ -138,6 +140,7 @@ void Voxex::loadScreens(DisplayEngine& display) {
 	std::shared_ptr<Screen> world = std::make_shared<Screen>(display, false);
 	world->addComponentManager(std::make_shared<RenderComponentManager>());
 	world->addComponentManager(std::make_shared<PhysicsComponentManager>());
+	world->addComponentManager(std::make_shared<AIComponentManager>());
 
 	std::vector<Chunk> chunks;
 	std::mutex chunkLock;
@@ -223,6 +226,19 @@ for (size_t val = 0; val < chunks.size(); val++) {
 	//Yes, I know the correct term
 	std::cout << "Chunks using around " << (totalMemUsage >> 10) << " kilobytes in total\n";
 
+	PhysicsInfo playerPhysics = {
+		.shape = PhysicsShape::SPHERE,
+		.box = Aabb<float>({-1.0, -1.0, -1.0}, {1.0, 1.0, 1.0}),
+		.pos = glm::vec3(0.0, 1000.0, 0.0),
+		.mass = 1.0f,
+	};
+
+	std::shared_ptr<Object> player = std::make_shared<Object>();
+	player->addComponent(std::make_shared<PhysicsComponent>(std::make_shared<PhysicsObject>(playerPhysics)));
+	player->addComponent(std::make_shared<ControlledAI>());
+
+	world->addObject(player);
+
 	constexpr float dist = 1800.0f;
 	constexpr float center = 0.0f;
 	constexpr float height = 200.0f;
@@ -237,7 +253,10 @@ for (size_t val = 0; val < chunks.size(); val++) {
 		{{dist + center, height, -center}, {1.0, 0.0, 0.0, 0.0}}
 	};
 
-	world->setCamera(std::make_shared<AnimatedCamera>(cameraAnimation, 2000));
+	//world->setCamera(std::make_shared<AnimatedCamera>(cameraAnimation, 2000));
+	std::shared_ptr<SquareCamera> camera = std::make_shared<SquareCamera>();
+	camera->setTarget(player);
+	world->setCamera(camera);
 
 	display.pushScreen(world);
 }
