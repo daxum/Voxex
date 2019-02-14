@@ -32,14 +32,10 @@
 #include "ControlledAI.hpp"
 #include "SquareCamera.hpp"
 
+const UniformSet Voxex::chunkSet = UniformSet{UniformSetType::MODEL_DYNAMIC, 1024, {}};
+
 //TODO: This stuff goes elsewhere, most likely in its own class
 namespace {
-	const UniformSet chunkSet = {
-		UniformSetType::MODEL_STATIC,
-		1024,
-		{}
-	};
-
 	const std::array<std::array<float, 3>, 20> colors = {
 		0.200f, 0.200f, 0.200f, //0
 		0.430f, 0.366f, 0.075f, //1
@@ -101,6 +97,26 @@ namespace {
 
 		return chunk;
 	}
+
+	struct ShaderNames {
+		const char* const vertex;
+		const char* const fragment;
+	};
+
+	struct ShaderPaths {
+		ShaderNames chunk;
+	};
+
+	const ShaderPaths glShaders = {
+		{"shaders/glsl/chunk.vert", "shaders/glsl/chunk.frag"}
+	};
+
+	const ShaderPaths vkShaders = {
+		{"shaders/spirv/chunk.vert.spv", "shaders/spirv/chunk.frag.spv"}
+	};
+
+	const ShaderPaths* const shaderFiles = Voxex::USE_VULKAN ? &vkShaders : &glShaders;
+
 }
 
 void Voxex::createRenderObjects(std::shared_ptr<RenderInitializer> renderInit) {
@@ -124,11 +140,11 @@ void Voxex::createRenderObjects(std::shared_ptr<RenderInitializer> renderInit) {
 
 void Voxex::loadShaders(std::shared_ptr<ShaderLoader> loader) {
 	ShaderInfo chunkInfo = {
-		.vertex = "shaders/basicShader.vert",
-		.fragment = "shaders/basicShader.frag",
+		.vertex = shaderFiles->chunk.vertex,
+		.fragment = shaderFiles->chunk.fragment,
 		.pass = RenderPass::OPAQUE,
 		.buffer = CHUNK_BUFFER,
-		.uniformSets = {SCREEN_SET},
+		.uniformSets = {SCREEN_SET, CHUNK_SET},
 		.pushConstants = {{{UniformType::MAT4, "modelView", UniformProviderType::OBJECT_MODEL_VIEW, USE_VERTEX_SHADER}}},
 	};
 
