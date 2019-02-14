@@ -34,29 +34,6 @@ const UniformSet Voxex::chunkSet = UniformSet{UniformSetType::MODEL_DYNAMIC, 102
 
 //TODO: This stuff goes elsewhere, most likely in its own class
 namespace {
-	const std::array<std::array<float, 3>, 20> colors = {
-		0.200f, 0.200f, 0.200f, //0
-		0.430f, 0.366f, 0.075f, //1
-		0.100f, 0.900f, 0.150f, //2
-		0.900f, 0.010f, 0.200f, //3
-		0.010f, 0.300f, 0.950f, //4
-		0.500f, 0.500f, 0.300f, //5
-		0.300f, 0.750f, 0.800f, //6
-		1.000f, 1.000f, 1.000f, //7
-		1.000f, 0.000f, 0.000f, //8
-		0.000f, 1.000f, 0.000f, //9
-		0.000f, 0.000f, 1.000f, //10
-		0.100f, 0.100f, 0.100f, //11
-		0.200f, 0.200f, 0.200f, //12
-		0.300f, 0.300f, 0.300f, //13
-		0.400f, 0.400f, 0.400f, //14
-		0.500f, 0.500f, 0.500f, //15
-		0.600f, 0.600f, 0.600f, //16
-		0.700f, 0.700f, 0.700f, //17
-		0.800f, 0.800f, 0.800f, //18
-		0.900f, 0.900f, 0.900f, //19
-	};
-
 	Chunk genChunk(const Pos_t& pos) {
 		Chunk chunk(pos);
 
@@ -120,10 +97,9 @@ namespace {
 void Voxex::createRenderObjects(std::shared_ptr<RenderInitializer> renderInit) {
 	renderInit->createBuffer(CHUNK_BUFFER, VertexBufferInfo{{
 		{VERTEX_ELEMENT_POSITION, VertexElementType::VEC3},
-		{VERTEX_ELEMENT_NORMAL, VertexElementType::VEC3},
-		{VERTEX_ELEMENT_COLOR, VertexElementType::VEC3}},
+		{VERTEX_ELEMENT_PACKED_NORM_COLOR, VertexElementType::UINT32}},
 		BufferUsage::DEDICATED_SINGLE,
-		1'073'741'824
+		536'870'912
 	});
 
 	renderInit->addUniformSet(SCREEN_SET, UniformSet{
@@ -213,7 +189,7 @@ void Voxex::loadScreens(DisplayEngine& display) {
 //TODO: Multithread face generation only - can't upload off the main thread in opengl
 for (size_t val = 0; val < chunks.size(); val++) {
 //	Engine::parallelFor(0, chunks.size(), [&](size_t val) {
-		auto data = chunks.at(val).generateModel(colors);
+		auto data = chunks.at(val).generateModel();
 
 		std::shared_ptr<Object> chunkObject = std::make_shared<Object>();
 

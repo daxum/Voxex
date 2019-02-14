@@ -22,7 +22,7 @@
 
 class Voxex : public GameInterface {
 public:
-	static constexpr bool USE_VULKAN = false;
+	static constexpr bool USE_VULKAN = true;
 	static const UniformSet chunkSet;
 
 	void createRenderObjects(std::shared_ptr<RenderInitializer> renderInit);

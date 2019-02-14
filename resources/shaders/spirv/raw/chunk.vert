@@ -20,8 +20,7 @@
 #extension GL_ARB_separate_shader_objects : enable
 
 layout (location = 0) in vec3 posIn;
-layout (location = 1) in vec3 normalIn;
-layout (location = 2) in vec3 colorIn;
+layout (location = 1) in uint normColPack;
 
 layout (location = 0) out vec3 pos;
 layout (location = 1) out vec3 color;
@@ -41,10 +40,45 @@ layout (push_constant, std430) uniform ChunkData {
 	layout (offset = 0) mat4 modelView;
 } chunk;
 
+const vec4 normals[6] = vec4[6](
+	vec4(0.0, 0.0, -1.0, 0.0),
+	vec4(-1.0, 0.0, 0.0, 0.0),
+	vec4(0.0, 0.0, 1.0, 0.0),
+	vec4(1.0, 0.0, 0.0, 0.0),
+	vec4(0.0, 1.0, 0.0, 0.0),
+	vec4(0.0, -1.0, 0.0, 0.0)
+);
+
+const vec3 colors[20] = vec3[20](
+	vec3(0.200, 0.200, 0.200), //0
+	vec3(0.430, 0.366, 0.075), //1
+	vec3(0.100, 0.900, 0.150), //2
+	vec3(0.900, 0.010, 0.200), //3
+	vec3(0.010, 0.300, 0.950), //4
+	vec3(0.500, 0.500, 0.300), //5
+	vec3(0.300, 0.750, 0.800), //6
+	vec3(1.000, 1.000, 1.000), //7
+	vec3(1.000, 0.000, 0.000), //8
+	vec3(0.000, 1.000, 0.000), //9
+	vec3(0.000, 0.000, 1.000), //10
+	vec3(0.100, 0.100, 0.100), //11
+	vec3(0.200, 0.200, 0.200), //12
+	vec3(0.300, 0.300, 0.300), //13
+	vec3(0.400, 0.400, 0.400), //14
+	vec3(0.500, 0.500, 0.500), //15
+	vec3(0.600, 0.600, 0.600), //16
+	vec3(0.700, 0.700, 0.700), //17
+	vec3(0.800, 0.800, 0.800), //18
+	vec3(0.900, 0.900, 0.900) //19
+);
+
 void main() {
+	uint normalIndx = normColPack >> 16u;
+	uint colorIndx = normColPack & 0xFFFF;
+
 	gl_Position = screen.projection * chunk.modelView * vec4(posIn, 1.0);
-	normal = vec3(chunk.modelView * vec4(normalIn, 0.0));
-	color = colorIn;
+	normal = vec3(chunk.modelView * normals[normalIndx]);
+	color = colors[colorIndx];
 	lightDir = (screen.view * vec4(normalize(vec3(-1.0, -1.0, 1.0)), 0.0)).xyz;
 	pos = vec3(chunk.modelView * vec4(posIn, 1.0));
 }

@@ -24,7 +24,7 @@ const char* const CHUNK_BUFFER = "chnkBfr";
 
 //Buffer elements
 
-const char* const VERTEX_ELEMENT_COLOR = "col";
+const char* const VERTEX_ELEMENT_PACKED_NORM_COLOR = "norCol";
 
 //Shaders
 

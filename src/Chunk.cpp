@@ -71,7 +71,7 @@ void Chunk::addRegion(const Region& reg) {
 	regions.addRegions(addVec);
 }
 
-ChunkMeshData Chunk::generateModel(const std::array<std::array<float, 3>, 20>& colors) {
+ChunkMeshData Chunk::generateModel() {
 	std::vector<RegionFace> faces = regions.genQuads();
 
 	std::vector<Vertex> vertices;
@@ -83,13 +83,11 @@ ChunkMeshData Chunk::generateModel(const std::array<std::array<float, 3>, 20>& c
 	for (const RegionFace& face : faces) {
 		size_t baseIndex = vertices.size();
 
-		glm::vec3 normal;
 		std::array<glm::vec3, 4> positions;
 
 		switch (face.getNormal()) {
 			//Facing -z
 			case 0: {
-				normal = glm::vec3(0.0, 0.0, -1.0);
 				positions.at(0) = {face.min.at(0), face.min.at(1), face.fixedCoord};
 				positions.at(1) = {face.min.at(0), face.max.at(1), face.fixedCoord};
 				positions.at(2) = {face.max.at(0), face.min.at(1), face.fixedCoord};
@@ -97,7 +95,6 @@ ChunkMeshData Chunk::generateModel(const std::array<std::array<float, 3>, 20>& c
 			} break;
 			//Facing -x
 			case 1: {
-				normal = glm::vec3(-1.0, 0.0, 0.0);
 				positions.at(0) = {face.fixedCoord, face.min.at(0), face.max.at(1)};
 				positions.at(1) = {face.fixedCoord, face.max.at(0), face.max.at(1)};
 				positions.at(2) = {face.fixedCoord, face.min.at(0), face.min.at(1)};
@@ -105,7 +102,6 @@ ChunkMeshData Chunk::generateModel(const std::array<std::array<float, 3>, 20>& c
 			} break;
 			//Facing +z
 			case 2: {
-				normal = glm::vec3(0.0, 0.0, 1.0);
 				positions.at(0) = {face.max.at(0), face.min.at(1), face.fixedCoord};
 				positions.at(1) = {face.max.at(0), face.max.at(1), face.fixedCoord};
 				positions.at(2) = {face.min.at(0), face.min.at(1), face.fixedCoord};
@@ -113,7 +109,6 @@ ChunkMeshData Chunk::generateModel(const std::array<std::array<float, 3>, 20>& c
 			} break;
 			//Facing +x
 			case 3: {
-				normal = glm::vec3(1.0, 0.0, 0.0);
 				positions.at(0) = {face.fixedCoord, face.max.at(0), face.max.at(1)};
 				positions.at(1) = {face.fixedCoord, face.min.at(0), face.max.at(1)};
 				positions.at(2) = {face.fixedCoord, face.max.at(0), face.min.at(1)};
@@ -121,7 +116,6 @@ ChunkMeshData Chunk::generateModel(const std::array<std::array<float, 3>, 20>& c
 			} break;
 			//Facing +y
 			case 4: {
-				normal = glm::vec3(0.0, 1.0, 0.0);
 				positions.at(0) = {face.min.at(0), face.fixedCoord, face.min.at(1)};
 				positions.at(1) = {face.min.at(0), face.fixedCoord, face.max.at(1)};
 				positions.at(2) = {face.max.at(0), face.fixedCoord, face.min.at(1)};
@@ -129,7 +123,6 @@ ChunkMeshData Chunk::generateModel(const std::array<std::array<float, 3>, 20>& c
 			} break;
 			//Facing -y
 			case 5: {
-				normal = glm::vec3(0.0, -1.0, 0.0);
 				positions.at(0) = {face.min.at(0), face.fixedCoord, face.max.at(1)};
 				positions.at(1) = {face.min.at(0), face.fixedCoord, face.min.at(1)};
 				positions.at(2) = {face.max.at(0), face.fixedCoord, face.max.at(1)};
@@ -143,12 +136,13 @@ ChunkMeshData Chunk::generateModel(const std::array<std::array<float, 3>, 20>& c
 			positions.at(i) -= glm::vec3(128, 128, 128);
 			positions.at(i).z = -positions.at(i).z;
 
-			glm::vec3 color(colors.at(face.type).at(0), colors.at(face.type).at(1), colors.at(face.type).at(2));
-
 			Vertex vert = buffer.getVertex();
 			vert.setVec3(VERTEX_ELEMENT_POSITION, positions.at(i));
-			vert.setVec3(VERTEX_ELEMENT_NORMAL, normal);
-			vert.setVec3(VERTEX_ELEMENT_COLOR, color);
+
+			uint32_t normal = face.getNormal();
+			uint32_t type = face.type;
+
+			vert.setUint32(VERTEX_ELEMENT_PACKED_NORM_COLOR, (normal << 16) | type);
 			vertices.push_back(vert);
 		}
 
@@ -166,8 +160,7 @@ ChunkMeshData Chunk::generateModel(const std::array<std::array<float, 3>, 20>& c
 		modelName,
 		Mesh(CHUNK_BUFFER, {
 			{VERTEX_ELEMENT_POSITION, VertexElementType::VEC3},
-			{VERTEX_ELEMENT_NORMAL, VertexElementType::VEC3},
-			{VERTEX_ELEMENT_COLOR, VertexElementType::VEC3}},
+			{VERTEX_ELEMENT_PACKED_NORM_COLOR, VertexElementType::UINT32}},
 			vertices,
 			indices,
 			box,

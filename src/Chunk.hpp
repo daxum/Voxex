@@ -50,7 +50,7 @@ public:
 	 * @param colors The colors for the regions.
 	 * @return The chunk's mesh data.
 	 */
-	ChunkMeshData generateModel(const std::array<std::array<float, 3>, 20>& colors);
+	ChunkMeshData generateModel();
 
 	/**
 	 * Returns the number of regions in the chunk.
