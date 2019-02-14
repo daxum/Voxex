@@ -44,11 +44,13 @@ function build {
 	if [ $BUILD -eq 1 ]; then
 		#TODO: find way to do with cmake
 		OLD_DIR=$(pwd)
-		cd ../../${SPIRV_DIR}
+		cd ../${SPIRV_DIR}
 
 		#spir-v shaders go here
 		#(as "buildShader <shaderName>")
-		
+		buildShader "chunk.vert"
+		buildShader "chunk.frag"
+
 		cd "${OLD_DIR}"
 
 		echo "Building mode \"${MODE}\"..."

@@ -19,6 +19,7 @@
 #include "Chunk.hpp"
 #include "Engine.hpp"
 #include "Names.hpp"
+#include "Voxex.hpp"
 
 namespace {
 	/**
@@ -171,7 +172,7 @@ ChunkMeshData Chunk::generateModel(const std::array<std::array<float, 3>, 20>& c
 			indices,
 			box,
 			std::sqrt(std::sqrt(255*255 + 255*255)*std::sqrt(255*255 + 255*255) + 255*255)),
-		Model(modelName, modelName, CHUNK_SHADER, CHUNK_SET, UniformSet{UniformSetType::MODEL_STATIC, 1024, {}})
+		Model(modelName, modelName, CHUNK_SHADER, CHUNK_SET, Voxex::chunkSet)
 	};
 
 	return out;
