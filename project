@@ -27,7 +27,7 @@ SETUP=0
 MODE="none"
 
 SPIRV_DIR="resources/shaders/spirv"
-EXEC_NAME="chunkTest"
+EXEC_NAME="voxex"
 ENGINE_DIR="SGIS-Engine"
 ENGINE_UPSTREAM="https://github.com/daxum/${ENGINE_DIR}.git"
 
