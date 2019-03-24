@@ -18,12 +18,6 @@
 
 #include "RegionTree.hpp"
 
-RegionTree::RegionTree(size_t splitCount, Aabb<uint8_t> box) :
-	box(box),
-	splitCount(splitCount) {
-
-}
-
 void RegionTree::addRegions(std::vector<InternalRegion>& addRegs) {
 	//Split up regions to remove intersections with this node
 	for (size_t i = 0; i < addRegs.size(); i++) {
@@ -240,7 +234,7 @@ void RegionTree::trySplitTree() {
 		std::array<Aabb<uint8_t>, 8> childBoxes = box.split();
 
 		for (Aabb<uint8_t> childBox : childBoxes) {
-			children.emplace_back(splitCount, childBox);
+			children.emplace_back(childBox);
 		}
 
 		//Try to distribute boxes among children
