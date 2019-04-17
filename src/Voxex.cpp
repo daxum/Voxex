@@ -49,7 +49,7 @@ namespace {
 			Aabb<int64_t> box = regions.top();
 			regions.pop();
 
-			constexpr int64_t minEdge = 4;
+			constexpr int64_t minEdge = 1;
 			constexpr float fillThreshold = 0.20f;
 			constexpr float cutoffScale = 72.0f;
 			constexpr float discardThreshold = 0.37f;
