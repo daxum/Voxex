@@ -22,24 +22,33 @@
 namespace {
 	const std::string seed = "Physics Enabled!";
 
-	//TODO: better hash
+	constexpr std::array<glm::vec3, 12> corners = {
+		glm::vec3(0.0, 0.0, 1.0),
+		glm::vec3(0.0, 1.0, 0.0),
+		glm::vec3(1.0, 0.0, 0.0),
+		glm::vec3(0.0, 0.0, -1.0),
+		glm::vec3(0.0, -1.0, 0.0),
+		glm::vec3(-1.0, 0.0, 0.0),
+		glm::vec3(1.0, 1.0, 0.0),
+		glm::vec3(1.0, 0.0, 1.0),
+		glm::vec3(0.0, 1.0, 1.0),
+		glm::vec3(-1.0, -1.0, 0.0),
+		glm::vec3(-1.0, 0.0, -1.0),
+		glm::vec3(0.0, -1.0, -1.0)
+	};
+
 	glm::vec3 getGradient(std::array<int64_t, 3> pos) {
-		glm::vec3 out;
+		uint64_t seedHash = std::hash<std::string>()(seed);
 
-		int64_t seedHash = (int64_t) std::hash<std::string>()(seed);
+		uint64_t x = pos.at(0);
+		uint64_t y = pos.at(1);
+		uint64_t z = pos.at(2);
 
-		int64_t val = (pos.at(0) + 2) * 7;
-		val ^= (pos.at(1) + 3) * 13;
-		val ^= (pos.at(2) + 5) * 17;
+		uint64_t hash1 = ((x + y) * (x + y + 1)) / 2 + y;
+		uint64_t hash2 = ((z + seedHash) * (z + seedHash + 1)) / 2 + seedHash;
+		uint64_t hash = ((hash1 + hash2) * (hash1 + hash2 + 1)) / 2 + hash2;
 
-		for (size_t i = 0; i < pos.size(); i++) {
-			out[i] = (pos.at(i) ^ val) * (seedHash + 13);
-		}
-
-		//Avoid becoming too big in the dot product and returning infinity (makes normalize return 0)
-		out /= 4'000'000'000;
-
-		return glm::normalize(out);
+		return glm::normalize(corners.at(hash % corners.size()));
 	}
 
 	constexpr float smooth(float val) {

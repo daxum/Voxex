@@ -63,7 +63,9 @@ class RegionTree {
 public:
 	typedef std::array<std::vector<RegionFace>, 3> FaceList;
 
-	RegionTree(size_t splitCount, Aabb<uint8_t> box = Aabb<uint8_t>({0, 0, 0}, {255, 255, 255}));
+	constexpr static size_t splitCount = 512;
+
+	RegionTree(Aabb<uint8_t> box = Aabb<uint8_t>({0, 0, 0}, {255, 255, 255})) : box(box) {}
 
 	void addRegions(std::vector<InternalRegion>& addRegs);
 
@@ -93,7 +95,6 @@ public:
 
 private:
 	Aabb<uint8_t> box;
-	size_t splitCount;
 	std::vector<RegionTree> children;
 	std::vector<InternalRegion> regions;
 

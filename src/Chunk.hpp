@@ -37,7 +37,7 @@ struct ChunkMeshData {
 
 class Chunk {
 public:
-	Chunk(Pos_t pos) : regions(512), box(pos, pos + Pos_t{256, 256, 256}) {}
+	Chunk(Pos_t pos) : box(pos, pos + Pos_t{256, 256, 256}) {}
 
 	/**
 	 * Adds a region to the chunk, without overwriting old regions.
