@@ -293,13 +293,12 @@ void RegionTree::deduplicateFaces(FaceList& faceList) {
 void RegionTree::deduplicateAdd(FaceList& addList, RegionFace face) {
 	std::vector<RegionFace>& list = addList.at(face.getUnusedAxis());
 
-	for (size_t i = 0; i < list.size(); i++) {
+	for (size_t i = list.size() - 1; i + 1 > 0; i--) {
 		handleFaceIntersection(face, list.at(i));
 
 		if (list.at(i).fullyCovered()) {
 			list.at(i) = list.back();
 			list.pop_back();
-			i--;
 		}
 
 		if (face.fullyCovered()) {
