@@ -19,6 +19,7 @@
 #include <atomic>
 #include <mutex>
 #include <stack>
+#include <fstream>
 
 #include "Voxex.hpp"
 #include "Chunk.hpp"
@@ -30,6 +31,29 @@
 #include "Names.hpp"
 #include "DefaultCamera.hpp"
 
+namespace {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
+	void writeObj(const std::string& outFile, const Mesh& mesh) {
+		std::ofstream out(outFile + ".obj");
+		const unsigned char* vertData = std::get<0>(mesh.getMeshData());
+		size_t vertSize = std::get<1>(mesh.getMeshData());
+		const std::vector<uint32_t>& indices = std::get<2>(mesh.getMeshData());
+
+		out << "o " << outFile << "\n";
+
+		for (size_t i = 0; i < vertSize / 16; i++) {
+			glm::vec3 vert = *(glm::vec3*)&vertData[i*16];
+			out << "v " << vert.x << " " << vert.y << " " << vert.z << "\n";
+		}
+
+		for (size_t i = 0; i < indices.size(); i += 3) {
+			out << "f " << (indices.at(i) + 1) << "// " << (indices.at(i+1) + 1) << "// " << (indices.at(i+2) + 1) << "//\n";
+		}
+	}
+#pragma GCC diagnostic pop
+}
+
 const UniformSet Voxex::chunkSet = UniformSet{UniformSetType::MODEL_DYNAMIC, 1024, {}};
 
 //TODO: This stuff goes elsewhere, most likely in its own class
@@ -38,7 +62,7 @@ namespace {
 		Chunk chunk(pos);
 
 		std::stack<Aabb<int64_t>> regions;
-		regions.push(Aabb<int64_t>(chunk.getBox().min, chunk.getBox().max - Pos_t(1, 1, 1)));
+		regions.push(Aabb<int64_t>(chunk.getBox().min, chunk.getBox().max));
 		uint64_t boxes = 0;
 
 		while (!regions.empty()) {
@@ -99,7 +123,7 @@ void Voxex::createRenderObjects(std::shared_ptr<RenderInitializer> renderInit) {
 		{VERTEX_ELEMENT_POSITION, VertexElementType::VEC3},
 		{VERTEX_ELEMENT_PACKED_NORM_COLOR, VertexElementType::UINT32}},
 		BufferUsage::DEDICATED_SINGLE,
-		536'870'912
+		1'073'741'824
 	});
 
 	renderInit->addUniformSet(SCREEN_SET, UniformSet{
@@ -190,6 +214,7 @@ void Voxex::loadScreens(DisplayEngine& display) {
 for (size_t val = 0; val < chunks.size(); val++) {
 //	Engine::parallelFor(0, chunks.size(), [&](size_t val) {
 		auto data = chunks.at(val).generateModel();
+		//writeObj(data.model.name, data.mesh);
 
 		std::shared_ptr<Object> chunkObject = std::make_shared<Object>();
 

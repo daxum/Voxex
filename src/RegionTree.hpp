@@ -34,11 +34,11 @@ struct RegionFace {
 	//below.
 	uint8_t normalAxis;
 	//Stores the coordinate for the third, fixed, axis.
-	uint8_t fixedCoord;
+	uint16_t fixedCoord;
 	//Stores the minimum and maximum coordinates
 	//in the two used axis.
-	std::array<uint8_t, 2> min;
-	std::array<uint8_t, 2> max;
+	std::array<uint16_t, 2> min;
+	std::array<uint16_t, 2> max;
 	//Stores the type of region this face is for.
 	uint16_t type;
 	//Area covered by other faces.
@@ -104,7 +104,7 @@ private:
 
 	static void deduplicateAdd(FaceList& addList, RegionFace face);
 
-	static bool isOnEdge(const RegionFace& face, const Aabb<uint8_t>& box) {
+	static bool isOnEdge(const RegionFace& face, const Aabb<uint16_t>& box) {
 		switch (face.getUnusedAxis()) {
 			//X
 			case 0: return face.fixedCoord == box.min.x || face.fixedCoord == box.max.x;

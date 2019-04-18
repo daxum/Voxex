@@ -21,38 +21,6 @@
 #include "Names.hpp"
 #include "Voxex.hpp"
 
-namespace {
-	/**
-	 * Offset should be multiple of 256 (length of chunk).
-	 */
-	/**Region fromInternal(const InternalRegion& internal, const Pos_t& offset) :
-		type(internal.type),
-		box(internal.box) {
-
-		box.min += offset;
-		box.max += offset;
-	}**/
-
-	uint8_t reduceCoords(int64_t val) {
-		return (val < 0) ? 256 - (((-val) & 255)) : val & 255;
-	}
-
-	InternalRegion toInternal(const Region& region) {
-		InternalRegion reg = {};
-		reg.type = region.type;
-
-		reg.box.min.x = reduceCoords(region.box.min.x);
-		reg.box.min.y = reduceCoords(region.box.min.y);
-		reg.box.min.z = reduceCoords(region.box.min.z);
-
-		reg.box.max.x = reduceCoords(region.box.max.x);
-		reg.box.max.y = reduceCoords(region.box.max.y);
-		reg.box.max.z = reduceCoords(region.box.max.z);
-
-		return reg;
-	}
-}
-
 void Chunk::addRegion(const Region& reg) {
 	if (!box.contains(reg.box)) {
 		std::cout << reg.box << "\n";
@@ -64,8 +32,13 @@ void Chunk::addRegion(const Region& reg) {
 		throw std::runtime_error("Attempted to add 0-volume box!");
 	}
 
-	InternalRegion region = toInternal(reg);
-	region.box.validate();
+	Pos_t min = reg.box.min - box.min;
+	Pos_t max = reg.box.max - box.min - Pos_t(1, 1, 1);
+
+	InternalRegion region = {
+		.type = reg.type,
+		.box = Aabb<uint8_t>(min, max),
+	};
 
 	std::vector<InternalRegion> addVec = {region};
 	regions.addRegions(addVec);
@@ -85,48 +58,52 @@ ChunkMeshData Chunk::generateModel() {
 
 		std::array<glm::vec3, 4> positions;
 
+		std::array<uint64_t, 2> min = {face.min.at(0), face.min.at(1)};
+		std::array<uint64_t, 2> max = {face.max.at(0), face.max.at(1)};
+		uint64_t fixedCoord = face.fixedCoord;
+
 		switch (face.getNormal()) {
 			//Facing -z
 			case 0: {
-				positions.at(0) = {face.min.at(0), face.min.at(1), face.fixedCoord};
-				positions.at(1) = {face.min.at(0), face.max.at(1), face.fixedCoord};
-				positions.at(2) = {face.max.at(0), face.min.at(1), face.fixedCoord};
-				positions.at(3) = {face.max.at(0), face.max.at(1), face.fixedCoord};
+				positions.at(0) = {min.at(0), min.at(1), fixedCoord};
+				positions.at(1) = {min.at(0), max.at(1), fixedCoord};
+				positions.at(2) = {max.at(0), min.at(1), fixedCoord};
+				positions.at(3) = {max.at(0), max.at(1), fixedCoord};
 			} break;
 			//Facing -x
 			case 1: {
-				positions.at(0) = {face.fixedCoord, face.min.at(0), face.max.at(1)};
-				positions.at(1) = {face.fixedCoord, face.max.at(0), face.max.at(1)};
-				positions.at(2) = {face.fixedCoord, face.min.at(0), face.min.at(1)};
-				positions.at(3) = {face.fixedCoord, face.max.at(0), face.min.at(1)};
+				positions.at(0) = {fixedCoord, min.at(0), max.at(1)};
+				positions.at(1) = {fixedCoord, max.at(0), max.at(1)};
+				positions.at(2) = {fixedCoord, min.at(0), min.at(1)};
+				positions.at(3) = {fixedCoord, max.at(0), min.at(1)};
 			} break;
 			//Facing +z
 			case 2: {
-				positions.at(0) = {face.max.at(0), face.min.at(1), face.fixedCoord};
-				positions.at(1) = {face.max.at(0), face.max.at(1), face.fixedCoord};
-				positions.at(2) = {face.min.at(0), face.min.at(1), face.fixedCoord};
-				positions.at(3) = {face.min.at(0), face.max.at(1), face.fixedCoord};
+				positions.at(0) = {max.at(0), min.at(1), fixedCoord};
+				positions.at(1) = {max.at(0), max.at(1), fixedCoord};
+				positions.at(2) = {min.at(0), min.at(1), fixedCoord};
+				positions.at(3) = {min.at(0), max.at(1), fixedCoord};
 			} break;
 			//Facing +x
 			case 3: {
-				positions.at(0) = {face.fixedCoord, face.max.at(0), face.max.at(1)};
-				positions.at(1) = {face.fixedCoord, face.min.at(0), face.max.at(1)};
-				positions.at(2) = {face.fixedCoord, face.max.at(0), face.min.at(1)};
-				positions.at(3) = {face.fixedCoord, face.min.at(0), face.min.at(1)};
+				positions.at(0) = {fixedCoord, max.at(0), max.at(1)};
+				positions.at(1) = {fixedCoord, min.at(0), max.at(1)};
+				positions.at(2) = {fixedCoord, max.at(0), min.at(1)};
+				positions.at(3) = {fixedCoord, min.at(0), min.at(1)};
 			} break;
 			//Facing +y
 			case 4: {
-				positions.at(0) = {face.min.at(0), face.fixedCoord, face.min.at(1)};
-				positions.at(1) = {face.min.at(0), face.fixedCoord, face.max.at(1)};
-				positions.at(2) = {face.max.at(0), face.fixedCoord, face.min.at(1)};
-				positions.at(3) = {face.max.at(0), face.fixedCoord, face.max.at(1)};
+				positions.at(0) = {min.at(0), fixedCoord, min.at(1)};
+				positions.at(1) = {min.at(0), fixedCoord, max.at(1)};
+				positions.at(2) = {max.at(0), fixedCoord, min.at(1)};
+				positions.at(3) = {max.at(0), fixedCoord, max.at(1)};
 			} break;
 			//Facing -y
 			case 5: {
-				positions.at(0) = {face.min.at(0), face.fixedCoord, face.max.at(1)};
-				positions.at(1) = {face.min.at(0), face.fixedCoord, face.min.at(1)};
-				positions.at(2) = {face.max.at(0), face.fixedCoord, face.max.at(1)};
-				positions.at(3) = {face.max.at(0), face.fixedCoord, face.min.at(1)};
+				positions.at(0) = {min.at(0), fixedCoord, max.at(1)};
+				positions.at(1) = {min.at(0), fixedCoord, min.at(1)};
+				positions.at(2) = {max.at(0), fixedCoord, max.at(1)};
+				positions.at(3) = {max.at(0), fixedCoord, min.at(1)};
 			} break;
 			default: throw std::runtime_error("Extra direction?!");
 		}

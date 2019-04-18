@@ -108,12 +108,16 @@ std::pair<RegionTree::FaceList, RegionTree::FaceList> RegionTree::genQuadsIntern
 
 	deduplicateFaces(outerFaces);
 
+	//Expand the node's box from a block range to a bounding box
+	Aabb<uint16_t> expandedBox = box;
+	expandedBox.max += Aabb<uint16_t>::vec_t(1, 1, 1);
+
 	//Move inner faces for this box out of outer face list
 	for (size_t i = 0; i < outerFaces.size(); i++) {
 		std::vector<RegionFace>& outerList = outerFaces.at(i);
 
 		for (size_t j = 0; j < outerList.size(); j++) {
-			if (!isOnEdge(outerList.at(j), box)) {
+			if (!isOnEdge(outerList.at(j), expandedBox)) {
 				addFaceToList(innerFaces, outerList.at(j));
 				outerList.at(j) = outerList.back();
 				outerList.pop_back();
@@ -126,28 +130,36 @@ std::pair<RegionTree::FaceList, RegionTree::FaceList> RegionTree::genQuadsIntern
 
 	//Collect all region faces
 	for (const InternalRegion& region : regions) {
-		uint32_t xArea = (uint32_t)region.box.yLength() * (uint32_t)region.box.zLength();
-		uint32_t yArea = (uint32_t)region.box.xLength() * (uint32_t)region.box.zLength();
-		uint32_t zArea = (uint32_t)region.box.xLength() * (uint32_t)region.box.yLength();
+		//Expand region box similarly to the node box above
+		Aabb<uint32_t> fullRegionBox = region.box;
+		fullRegionBox.max += Aabb<uint32_t>::vec_t(1, 1, 1);
+
+		uint32_t xArea = fullRegionBox.yLength() * fullRegionBox.zLength();
+		uint32_t yArea = fullRegionBox.xLength() * fullRegionBox.zLength();
+		uint32_t zArea = fullRegionBox.xLength() * fullRegionBox.yLength();
+
+		//Don't bother to use the expanded box here, it would only require more casting
+		Aabb<uint16_t>::vec_t min = region.box.min;
+		Aabb<uint16_t>::vec_t max(region.box.max.x + 1, region.box.max.y + 1, region.box.max.z + 1);
 
 		//north
-		addFaceToList(currentFaces, {0x80, region.box.min.z, {region.box.min.x, region.box.min.y}, {region.box.max.x, region.box.max.y}, region.type, 0, zArea});
+		addFaceToList(currentFaces, {0x80, min.z, {min.x, min.y}, {max.x, max.y}, region.type, 0, zArea});
 		//east
-		addFaceToList(currentFaces, {0x01, region.box.min.x, {region.box.min.y, region.box.min.z}, {region.box.max.y, region.box.max.z}, region.type, 0, xArea});
+		addFaceToList(currentFaces, {0x01, min.x, {min.y, min.z}, {max.y, max.z}, region.type, 0, xArea});
 		//south
-		addFaceToList(currentFaces, {0x82, region.box.max.z, {region.box.min.x, region.box.min.y}, {region.box.max.x, region.box.max.y}, region.type, 0, zArea});
+		addFaceToList(currentFaces, {0x82, max.z, {min.x, min.y}, {max.x, max.y}, region.type, 0, zArea});
 		//west
-		addFaceToList(currentFaces, {0x03, region.box.max.x, {region.box.min.y, region.box.min.z}, {region.box.max.y, region.box.max.z}, region.type, 0, xArea});
+		addFaceToList(currentFaces, {0x03, max.x, {min.y, min.z}, {max.y, max.z}, region.type, 0, xArea});
 		//up
-		addFaceToList(currentFaces, {0x44, region.box.max.y, {region.box.min.x, region.box.min.z}, {region.box.max.x, region.box.max.z}, region.type, 0, yArea});
+		addFaceToList(currentFaces, {0x44, max.y, {min.x, min.z}, {max.x, max.z}, region.type, 0, yArea});
 		//down
-		addFaceToList(currentFaces, {0x45, region.box.min.y, {region.box.min.x, region.box.min.z}, {region.box.max.x, region.box.max.z}, region.type, 0, yArea});
+		addFaceToList(currentFaces, {0x45, min.y, {min.x, min.z}, {max.x, max.z}, region.type, 0, yArea});
 	}
 
 	//Sort into inner and outer
 	for (size_t i = 0; i < currentFaces.size(); i++) {
 		for (const RegionFace& face : currentFaces.at(i)) {
-			if (isOnEdge(face, box)) {
+			if (isOnEdge(face, expandedBox)) {
 				deduplicateAdd(outerFaces, face);
 			}
 			else {
@@ -234,6 +246,12 @@ void RegionTree::trySplitTree() {
 		std::array<Aabb<uint8_t>, 8> childBoxes = box.split();
 
 		for (Aabb<uint8_t> childBox : childBoxes) {
+			//Internal regions are stored as blocks, not bounding boxes, so
+			//we have to make sure two children can't contain the same region
+			if (childBox.min.x != 0) childBox.min.x++;
+			if (childBox.min.y != 0) childBox.min.y++;
+			if (childBox.min.z != 0) childBox.min.z++;
+
 			children.emplace_back(childBox);
 		}
 
