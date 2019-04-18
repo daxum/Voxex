@@ -113,15 +113,12 @@ std::pair<RegionTree::FaceList, RegionTree::FaceList> RegionTree::genQuadsIntern
 	expandedBox.max += Aabb<uint16_t>::vec_t(1, 1, 1);
 
 	//Move inner faces for this box out of outer face list
-	for (size_t i = 0; i < outerFaces.size(); i++) {
-		std::vector<RegionFace>& outerList = outerFaces.at(i);
-
-		for (size_t j = 0; j < outerList.size(); j++) {
-			if (!isOnEdge(outerList.at(j), expandedBox)) {
-				addFaceToList(innerFaces, outerList.at(j));
-				outerList.at(j) = outerList.back();
+	for (std::vector<RegionFace>& outerList : outerFaces) {
+		for (size_t i = outerList.size() - 1; i + 1 > 0; i--) {
+			if (!isOnEdge(outerList.at(i), expandedBox)) {
+				addFaceToList(innerFaces, outerList.at(i));
+				outerList.at(i) = outerList.back();
 				outerList.pop_back();
-				j--;
 			}
 		}
 	}
@@ -267,7 +264,7 @@ void RegionTree::deduplicateFaces(FaceList& faceList) {
 		for (size_t i = 0; i < faces.size(); i++) {
 			//Skip faces already covered to shave off a few more milliseconds.
 			//Causes a very small number of addition faces to be missed (~50/270000)
-			if (faces.at(i).coveredArea >= faces.at(i).totalArea) {
+			if (faces.at(i).fullyCovered()) {
 				continue;
 			}
 
