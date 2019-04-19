@@ -65,45 +65,108 @@ public:
 
 	constexpr static size_t splitCount = 512;
 
+	/**
+	 * Constructs an empry tree with the given bounding box.
+	 * @param box The box for the node.
+	 */
 	RegionTree(Aabb<uint8_t> box = Aabb<uint8_t>({0, 0, 0}, {255, 255, 255})) : box(box) {}
 
+	/**
+	 * Adds a list of regions to the tree. This does not do any checking for
+	 * if the regions are intersecting or such, and is primarily intended to
+	 * be called when generating a chunk or loading from disk.
+	 * @param addRegs The regions to add.
+	 */
 	void addRegions(std::vector<InternalRegion>& addRegs);
 
+	/**
+	 * Gets the number of regions stored in the tree.
+	 * @return The number of regions.
+	 */
 	size_t size() const ;
 
-	const std::vector<RegionTree>& getChildren() const { return children; }
-
-	const std::vector<InternalRegion>& getRegions() const { return regions; }
-
+	/**
+	 * Generates faces from the stored regions so the chunk can be rendered.
+	 * @return A list of faces making up the mesh.
+	 */
 	std::vector<RegionFace> genQuads() const;
 
 	/**
-	 * First is "outer" faces, which might intersect with other children.
-	 * Second is "inner" faces, which will only intersect with the parent.
+	 * Prints the number of regions for each node in a nicely formatted manner.
+	 * @param The number of indentations to put before the count.
 	 */
-	std::pair<FaceList, FaceList> genQuadsInternal() const;
-
 	void printCounts(std::string idents = "") const;
 
+	/**
+	 * Counts the number of nodes in the tree.
+	 * @return The number of nodes in the tree.
+	 */
 	size_t getNodeCount() const;
 
+	/**
+	 * Calculates the amount of memory used by the tree, its nodes, and the
+	 * regions stored in the nodes.
+	 * @return The total memory usage for the tree, in bytes.
+	 */
 	size_t getMemUsage() const;
 
+	/**
+	 * Attempts to lower the total region count by merging adjacent regions
+	 * of the same type.
+	 */
 	void optimizeTree();
 
+	/**
+	 * Returns whether this node is a leaf node. Leaf nodes
+	 * have no children.
+	 * @return Whether this node is a leaf.
+	 */
 	bool isLeaf() const { return children.empty(); }
 
 private:
+	//Bounding box for this node. This is a block range, not a containing volume.
 	Aabb<uint8_t> box;
+	//Child nodes of this node.
 	std::vector<RegionTree> children;
+	//All regions stored in this node.
 	std::vector<InternalRegion> regions;
 
+	/**
+	 * Checks if the tree is overloaded, and if it is, creates children and distributes
+	 * its regions among them.
+	 */
 	void trySplitTree();
 
+	/**
+	 * Generates faces for the regions stored in this node and all its children.
+	 * @return A pair of lists of face. The first element is the "outer" faces,
+	 *     which might intersect with the other children of the parent node, and the
+	 *     second element is "inner" faces, which will only intersect with the parent.
+	 */
+	std::pair<FaceList, FaceList> genQuadsInternal() const;
+
+	/**
+	 * Removes any faces from the given list which are fully covered by other faces.
+	 * @param faceList The list to deduplicate. It should be as small as possible for
+	 *     good performance.
+	 */
 	static void deduplicateFaces(FaceList& faceList);
 
+	/**
+	 * Checks the face against every face in the given list, removing any faces that
+	 * would become fully covered by the given face. If the provided face is not fully
+	 * covered after every face is checked, it is added to the list.
+	 * @param addList The list to add the face to.
+	 * @param face The face to add.
+	 */
 	static void deduplicateAdd(FaceList& addList, RegionFace face);
 
+	/**
+	 * Returns whether the face is on the edge of the given box.
+	 * @param face The face to check.
+	 * @param box The box to check against.
+	 * @return Whether the face intersects with any face of the provided box.
+	 */
 	static bool isOnEdge(const RegionFace& face, const Aabb<uint16_t>& box) {
 		switch (face.getUnusedAxis()) {
 			//X
@@ -116,16 +179,31 @@ private:
 		}
 	}
 
+	/**
+	 * Merges two face lists.
+	 * @param list The list to insert into.
+	 * @param instert The list to insert.
+	 */
 	static void insertFaceList(FaceList& list, const FaceList& insert) {
 		for (size_t i = 0; i < list.size(); i++) {
 			list.at(i).insert(list.at(i).end(), insert.at(i).begin(), insert.at(i).end());
 		}
 	}
 
+	/**
+	 * Directly adds a face to a facelist.
+	 * @param list The list to add to.
+	 * @param face The face to add.
+	 */
 	static void addFaceToList(FaceList& list, const RegionFace& face) {
 		list.at(face.getUnusedAxis()).push_back(face);
 	}
 
+	/**
+	 * Merges the lists contained in the two FaceLists into a single list of all faces.
+	 * @param list The two lists two flatten.
+	 * @return The flattened list.
+	 */
 	static std::vector<RegionFace> flattenList(const std::pair<FaceList, FaceList>& list) {
 		std::vector<RegionFace> faces;
 
@@ -140,8 +218,19 @@ private:
 		return faces;
 	}
 
+	/**
+	 * Checks whether the two faces are intersecting, and if they are, adds the
+	 * intersecting area to their total areas.
+	 * @param face1 The first face to check.
+	 * @param face2 The second face to check.
+	 */
 	static void handleFaceIntersection(RegionFace& face1, RegionFace& face2);
 
+	/**
+	 * Returns the size of the face list.
+	 * @param list The list to get the size of.
+	 * @return The size of the list.
+	 */
 	static size_t faceListSize(const FaceList& list) {
 		size_t count = 0;
 
