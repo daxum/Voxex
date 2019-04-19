@@ -22,7 +22,7 @@
 #include <fstream>
 
 #include "Voxex.hpp"
-#include "Chunk.hpp"
+#include "ChunkBuilder.hpp"
 #include "ExtraMath.hpp"
 #include "AxisAlignedBB.hpp"
 #include "Perlin.hpp"
@@ -58,8 +58,8 @@ const UniformSet Voxex::chunkSet = UniformSet{UniformSetType::MODEL_DYNAMIC, 102
 
 //TODO: This stuff goes elsewhere, most likely in its own class
 namespace {
-	Chunk genChunk(const Pos_t& pos) {
-		Chunk chunk(pos);
+	std::shared_ptr<Chunk> genChunk(const Pos_t& pos) {
+		ChunkBuilder chunk(pos);
 
 		std::stack<Aabb<int64_t>> regions;
 		regions.push(Aabb<int64_t>(chunk.getBox().min, chunk.getBox().max));
@@ -94,7 +94,7 @@ namespace {
 			}
 		}
 
-		return chunk;
+		return chunk.genChunk();
 	}
 
 	struct ShaderNames {
@@ -123,7 +123,7 @@ void Voxex::createRenderObjects(std::shared_ptr<RenderInitializer> renderInit) {
 		{VERTEX_ELEMENT_POSITION, VertexElementType::VEC3},
 		{VERTEX_ELEMENT_PACKED_NORM_COLOR, VertexElementType::UINT32}},
 		BufferUsage::DEDICATED_SINGLE,
-		1'073'741'824
+		16'000'000
 	});
 
 	renderInit->addUniformSet(SCREEN_SET, UniformSet{
@@ -155,12 +155,12 @@ void Voxex::loadScreens(DisplayEngine& display) {
 	world->addComponentManager(std::make_shared<RenderComponentManager>());
 	world->addComponentManager(std::make_shared<PhysicsComponentManager>());
 
-	std::vector<Chunk> chunks;
+	std::vector<std::shared_ptr<Chunk>> chunks;
 	std::mutex chunkLock;
 
-	constexpr size_t maxI = 4;
-	constexpr size_t maxJ = 4;
-	constexpr size_t maxK = 4;
+	constexpr size_t maxI = 1;
+	constexpr size_t maxJ = 1;
+	constexpr size_t maxK = 1;
 	constexpr size_t maxChunks = maxI * maxJ * maxK;
 
 	std::atomic<double> genTime(0.0);
@@ -172,7 +172,7 @@ void Voxex::loadScreens(DisplayEngine& display) {
 		size_t k = val % maxK;
 
 		double start = ExMath::getTimeMillis();
-		Chunk chunk = genChunk(Pos_t{256*i-256*(maxI/2), 256*j-256*(maxJ/2), 256*k-256*(maxK/2)});
+		std::shared_ptr<Chunk> chunk = genChunk(Pos_t{256*i-256*(maxI/2), 256*j-256*(maxJ/2), 256*k-256*(maxK/2)});
 		double end = ExMath::getTimeMillis();
 
 		std::cout << "Generated chunk " << val << " in " << end - start << "ms\n";
@@ -185,14 +185,14 @@ void Voxex::loadScreens(DisplayEngine& display) {
 			genAdd = end - start + genExpect;
 		} while (!genTime.compare_exchange_strong(genExpect, genAdd, std::memory_order_relaxed));
 
-		size_t startCount = chunk.regionCount();
+		size_t startCount = chunk->regionCount();
 
-		chunk.optimize();
+		chunk->optimize();
 
-		std::cout << "Reduced from " << startCount << " to " << chunk.regionCount() << " regions\n";
+		std::cout << "Reduced from " << startCount << " to " << chunk->regionCount() << " regions\n";
 
-		chunk.validate();
-		chunk.printStats();
+		chunk->validate();
+		chunk->printStats();
 
 		{
 			std::lock_guard<std::mutex> guard(chunkLock);
@@ -206,14 +206,14 @@ void Voxex::loadScreens(DisplayEngine& display) {
 	size_t totalMemUsage = 0;
 
 	for (size_t i = 0; i < chunks.size(); i++) {
-		totalRegions += chunks.at(i).regionCount();
-		totalMemUsage += chunks.at(i).getMemUsage();
+		totalRegions += chunks.at(i)->regionCount();
+		totalMemUsage += chunks.at(i)->getMemUsage();
 	}
 
 //TODO: Multithread face generation only - can't upload off the main thread in opengl
 for (size_t val = 0; val < chunks.size(); val++) {
 //	Engine::parallelFor(0, chunks.size(), [&](size_t val) {
-		auto data = chunks.at(val).generateModel();
+		auto data = chunks.at(val)->generateModel();
 		//writeObj(data.model.name, data.mesh);
 
 		std::shared_ptr<Object> chunkObject = std::make_shared<Object>();
@@ -224,7 +224,7 @@ for (size_t val = 0; val < chunks.size(); val++) {
 			Engine::instance->getModelManager().addModel(data.name, std::move(data.model));
 
 			chunkObject->addComponent(std::make_shared<RenderComponent>(data.name));
-			glm::vec3 chunkPos = chunks.at(val).getBox().getCenter();
+			glm::vec3 chunkPos = chunks.at(val)->getBox().getCenter();
 			chunkPos.z = -chunkPos.z;
 			chunkObject->addComponent(std::make_shared<PhysicsComponent>(std::make_shared<PhysicsObject>(data.name, chunkPos)));
 		}
@@ -240,7 +240,7 @@ for (size_t val = 0; val < chunks.size(); val++) {
 	//Yes, I know the correct term
 	std::cout << "Chunks using around " << (totalMemUsage >> 10) << " kilobytes in total\n";
 
-	constexpr float dist = 1800.0f;
+	constexpr float dist = 1000.0f;
 	constexpr float center = 0.0f;
 	constexpr float height = 200.0f;
 
