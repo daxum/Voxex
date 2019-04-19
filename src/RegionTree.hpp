@@ -74,10 +74,13 @@ public:
 	/**
 	 * Adds a list of regions to the tree. This does not do any checking for
 	 * if the regions are intersecting or such, and is primarily intended to
-	 * be called when generating a chunk or loading from disk.
+	 * be called when generating a chunk or loading from disk. When this is
+	 * called, it is assumed the the node's internal region and child
+	 * lists are empty - if they are not, all existing regions and children
+	 * are discarded.
 	 * @param addRegs The regions to add.
 	 */
-	void addRegions(std::vector<InternalRegion>& addRegs);
+	void addRegions(std::vector<InternalRegion> addRegs);
 
 	/**
 	 * Gets the number of regions stored in the tree.

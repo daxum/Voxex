@@ -18,58 +18,55 @@
 
 #include "RegionTree.hpp"
 
-void RegionTree::addRegions(std::vector<InternalRegion>& addRegs) {
-	//Split up regions to remove intersections with this node
-	for (size_t i = 0; i < addRegs.size(); i++) {
-		InternalRegion& next = addRegs.at(i);
+void RegionTree::addRegions(std::vector<InternalRegion> addRegs) {
+	children.clear();
+	regions.clear();
 
-		for (const InternalRegion& region : regions) {
-			//Split node if intersecting
-			if (next.box.intersects(region.box)) {
-				std::vector<Aabb<uint8_t>> subRegions = next.box.subtract(region.box);
+	if (addRegs.size() < splitCount) {
+		regions = addRegs;
+		return;
+	}
 
-				for (const Aabb<uint8_t>& box : subRegions) {
-					addRegs.push_back(InternalRegion{region.type, box});
-				}
+	//Find optimal splits for this node
+	glm::vec3 avgCenter(0.0f, 0.0f, 0.0f);
 
-				//Remove split box
+	for (const InternalRegion& reg : addRegs) {
+		avgCenter += Aabb<float>(reg.box).getCenter();
+	}
+
+	avgCenter /= addRegs.size();
+	Aabb<uint8_t>::vec_t centerSplit(avgCenter);
+
+	//Create children
+	std::array<Aabb<uint8_t>, 8> childBoxes = box.split(centerSplit);
+
+	for (Aabb<uint8_t> childBox : childBoxes) {
+		//Internal regions are stored as blocks, not bounding boxes, so
+		//we have to make sure two children can't contain the same region
+		if (childBox.min.x != 0) childBox.min.x++;
+		if (childBox.min.y != 0) childBox.min.y++;
+		if (childBox.min.z != 0) childBox.min.z++;
+
+		children.emplace_back(childBox);
+
+		//Add regions to child
+		std::vector<InternalRegion> childAdd;
+
+		for (size_t i = addRegs.size() - 1; i + 1 > 0; i--) {
+			InternalRegion reg = addRegs.at(i);
+
+			if (childBox.contains(reg.box)) {
+				childAdd.push_back(reg);
 				addRegs.at(i) = addRegs.back();
 				addRegs.pop_back();
-				i--;
-
-				break;
 			}
 		}
+
+		children.back().addRegions(childAdd);
 	}
 
-	//Recurse to children, so the smallest boxes end up at the bottom of the tree,
-	//and all boxes get split (no intersections!)
-	for (RegionTree& child : children) {
-		for (const InternalRegion& reg : addRegs) {
-			//Only recurse if we have a box that intersects with the child
-			if (reg.box.intersects(child.box)) {
-				child.addRegions(addRegs);
-				break;
-			}
-		}
-	}
-
-	//Add whatever's left that fits in this box
-	for (size_t i = 0; i < addRegs.size(); i++) {
-		InternalRegion& reg = addRegs.at(i);
-
-		if (box.contains(reg.box)) {
-			regions.push_back(reg);
-			addRegs.at(i) = addRegs.back();
-			addRegs.pop_back();
-			i--;
-		}
-	}
-
-	//Split tree if overloaded
-	if (regions.size() > splitCount) {
-		trySplitTree();
-	}
+	//Everything else goes in this node
+	regions = addRegs;
 }
 
 size_t RegionTree::size() const {
@@ -200,7 +197,7 @@ size_t RegionTree::getMemUsage() const {
 }
 
 void RegionTree::optimizeTree() {
-	regions.reserve(size());
+	/*regions.reserve(size());
 
 	for (RegionTree& child : children) {
 		child.optimizeTree();
@@ -210,7 +207,7 @@ void RegionTree::optimizeTree() {
 
 	for (size_t i = 0; i < regions.size(); i++) {
 		for (size_t j = i + 1; j < regions.size(); j++) {
-			if (regions.at(i).box.formsBoxWith(regions.at(j).box) /*&& regions.at(i).type == regions.at(j).type*/) {
+			if (regions.at(i).box.formsBoxWith(regions.at(j).box) && regions.at(i).type == regions.at(j).type) {
 				regions.at(i) = InternalRegion{regions.at(i).type, Aabb<uint8_t>(regions.at(i).box, regions.at(j).box)};
 				regions.at(j) = regions.back();
 				regions.pop_back();
@@ -234,7 +231,7 @@ void RegionTree::optimizeTree() {
 		children.clear();
 	}
 
-	regions.shrink_to_fit();
+	regions.shrink_to_fit();*/
 }
 
 void RegionTree::trySplitTree() {

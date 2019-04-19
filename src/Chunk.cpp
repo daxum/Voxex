@@ -21,29 +21,6 @@
 #include "Names.hpp"
 #include "Voxex.hpp"
 
-void Chunk::addRegion(const Region& reg) {
-	if (!box.contains(reg.box)) {
-		std::cout << reg.box << "\n";
-		throw std::invalid_argument("Attempt to add region not within chunk!");
-	}
-
-	if (reg.box.getVolume() == 0) {
-		std::cout << reg.box << "\n";
-		throw std::runtime_error("Attempted to add 0-volume box!");
-	}
-
-	Pos_t min = reg.box.min - box.min;
-	Pos_t max = reg.box.max - box.min - Pos_t(1, 1, 1);
-
-	InternalRegion region = {
-		.type = reg.type,
-		.box = Aabb<uint8_t>(min, max),
-	};
-
-	std::vector<InternalRegion> addVec = {region};
-	regions.addRegions(addVec);
-}
-
 ChunkMeshData Chunk::generateModel() {
 	std::vector<RegionFace> faces = regions.genQuads();
 

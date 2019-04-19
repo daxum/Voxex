@@ -37,13 +37,17 @@ struct ChunkMeshData {
 
 class Chunk {
 public:
-	Chunk(Pos_t pos) : box(pos, pos + Pos_t{256, 256, 256}) {}
+	Chunk(const Aabb<uint64_t>& box, const std::vector<InternalRegion>& addRegs) :
+		box(box) {
+
+		regions.addRegions(addRegs);
+	}
 
 	/**
 	 * Adds a region to the chunk, without overwriting old regions.
 	 * @param reg The region to add.
 	 */
-	void addRegion(const Region& reg);
+	void addRegion(const Region& reg) { /** TODO **/ }
 
 	/**
 	 * Generates a mesh from this chunk using the specific colors for its regions.
