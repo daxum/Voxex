@@ -63,7 +63,7 @@ class RegionTree {
 public:
 	typedef std::array<std::vector<RegionFace>, 3> FaceList;
 
-	constexpr static size_t splitCount = 512;
+	constexpr static size_t splitCount = 1024;
 
 	/**
 	 * Constructs an empry tree with the given bounding box.
@@ -112,12 +112,6 @@ public:
 	 * @return The total memory usage for the tree, in bytes.
 	 */
 	size_t getMemUsage() const;
-
-	/**
-	 * Attempts to lower the total region count by merging adjacent regions
-	 * of the same type.
-	 */
-	void optimizeTree();
 
 	/**
 	 * Returns whether this node is a leaf node. Leaf nodes

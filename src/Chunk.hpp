@@ -69,13 +69,6 @@ public:
 	void printStats();
 
 	/**
-	 * Attempts to minimize the number of regions in the chunk by merging
-	 * adjacent boxes with the same type.
-	 * This may be rendered unneccessary by better region storage later.
-	 */
-	void optimize() { regions.optimizeTree(); }
-
-	/**
 	 * Checks whether any regions in the chunk are overlapping.
 	 */
 	void validate() const {

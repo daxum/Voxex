@@ -22,7 +22,14 @@
 #include "Voxex.hpp"
 
 ChunkMeshData Chunk::generateModel() {
+	double start = ExMath::getTimeMillis();
+
 	std::vector<RegionFace> faces = regions.genQuads();
+
+	double end = ExMath::getTimeMillis();
+
+	std::cout << "Reduced from " << (regions.size() * 6) << " to " << faces.size() << " faces - " <<
+				 "completed in " << (end-start) << "ms\n";
 
 	std::vector<Vertex> vertices;
 	std::vector<uint32_t> indices;

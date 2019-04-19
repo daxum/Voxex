@@ -22,7 +22,7 @@ void RegionTree::addRegions(std::vector<InternalRegion> addRegs) {
 	children.clear();
 	regions.clear();
 
-	if (addRegs.size() < splitCount) {
+	if (addRegs.size() <= splitCount) {
 		regions = addRegs;
 		return;
 	}
@@ -35,17 +35,77 @@ void RegionTree::addRegions(std::vector<InternalRegion> addRegs) {
 	}
 
 	avgCenter /= addRegs.size();
-	Aabb<uint8_t>::vec_t centerSplit(avgCenter);
+	std::array<std::array<size_t, 3>, 3> boxSplitCounts = {};
+
+	//Determine best axis for split (least variation between halves)
+	for (const InternalRegion& reg : addRegs) {
+		for(size_t axis = 0; axis < 3; axis++) {
+			if (reg.box.max[axis] < avgCenter[axis]) {
+				boxSplitCounts[axis][0]++;
+			}
+			else if (reg.box.min[axis] > avgCenter[axis]) {
+				boxSplitCounts[axis][2]++;
+			}
+			else {
+				boxSplitCounts[axis][1]++;
+			}
+		}
+	}
+
+	std::array<size_t, 3> axisScores = {};
+
+	for (size_t i = 0; i < 3; i++) {
+		size_t left = boxSplitCounts[i][0];
+		size_t center = boxSplitCounts[i][1];
+		size_t right = boxSplitCounts[i][2];
+
+		size_t lrDiff = std::max(left, right) - std::min(left, right);
+		size_t lcDiff = std::max(left, center) - std::min(left, center);
+		size_t rcDiff = std::max(right, center) - std::min(right, center);
+
+		axisScores[i] = lrDiff + lcDiff + rcDiff;
+	}
+
+	size_t minAxis = 0;
+
+	for (size_t i = 0; i < 3; i++) {
+		minAxis = axisScores[i] < axisScores[minAxis] ? i : minAxis;
+	}
+
+	size_t splitBlock = (uint8_t) avgCenter[minAxis];
+
+	//Force extra regions to move to children
+	if (boxSplitCounts[minAxis][1] > splitCount) {
+		size_t toRemove = boxSplitCounts[minAxis][1] - splitCount;
+
+		for (size_t i = 0; i < addRegs.size(); i++) {
+			InternalRegion& reg = addRegs.at(i);
+
+			if (reg.box.min[minAxis] <= splitBlock && reg.box.max[minAxis] > splitBlock) {
+				std::array<Aabb<uint8_t>, 2> boxes = reg.box.bisect(minAxis, splitBlock);
+				boxes[1].min[minAxis]++;
+				reg.box = boxes[0];
+
+				if (boxes[1].min[minAxis] <= boxes[1].max[minAxis]) {
+					addRegs.push_back({reg.type, boxes[1]});
+				}
+
+				toRemove--;
+
+				if (toRemove == 0) {
+					break;
+				}
+			}
+		}
+	}
 
 	//Create children
-	std::array<Aabb<uint8_t>, 8> childBoxes = box.split(centerSplit);
+	std::array<Aabb<uint8_t>, 2> childBoxes = box.bisect(minAxis, splitBlock);
 
 	for (Aabb<uint8_t> childBox : childBoxes) {
 		//Internal regions are stored as blocks, not bounding boxes, so
 		//we have to make sure two children can't contain the same region
-		if (childBox.min.x != 0) childBox.min.x++;
-		if (childBox.min.y != 0) childBox.min.y++;
-		if (childBox.min.z != 0) childBox.min.z++;
+		if (childBox.min[minAxis] == splitBlock) childBox.min[minAxis]++;
 
 		children.emplace_back(childBox);
 
@@ -80,15 +140,8 @@ size_t RegionTree::size() const {
 }
 
 std::vector<RegionFace> RegionTree::genQuads() const {
-	double start = ExMath::getTimeMillis();
-
 	auto vecs = genQuadsInternal();
 	std::vector<RegionFace> faces = flattenList(vecs);
-
-	double end = ExMath::getTimeMillis();
-
-	std::cout << "Reduced from " << (size() * 6) << " to " << faces.size() << " faces - " <<
-				 "completed in " << (end-start) << "ms\n";
 
 	return faces;
 }
@@ -194,44 +247,6 @@ size_t RegionTree::getMemUsage() const {
 	mem += children.capacity() * sizeof(RegionTree);
 
 	return mem;
-}
-
-void RegionTree::optimizeTree() {
-	/*regions.reserve(size());
-
-	for (RegionTree& child : children) {
-		child.optimizeTree();
-		regions.insert(regions.end(), child.regions.begin(), child.regions.end());
-		child.regions.clear();
-	}
-
-	for (size_t i = 0; i < regions.size(); i++) {
-		for (size_t j = i + 1; j < regions.size(); j++) {
-			if (regions.at(i).box.formsBoxWith(regions.at(j).box) && regions.at(i).type == regions.at(j).type) {
-				regions.at(i) = InternalRegion{regions.at(i).type, Aabb<uint8_t>(regions.at(i).box, regions.at(j).box)};
-				regions.at(j) = regions.back();
-				regions.pop_back();
-				i = 0 - 1;
-				break;
-			}
-		}
-	}
-
-	bool pruneChildren = true;
-
-	for (RegionTree& child : children) {
-		child.addRegions(regions);
-
-		if (!child.isLeaf() || !child.regions.empty()) {
-			pruneChildren = false;
-		}
-	}
-
-	if (!isLeaf() && pruneChildren) {
-		children.clear();
-	}
-
-	regions.shrink_to_fit();*/
 }
 
 void RegionTree::trySplitTree() {

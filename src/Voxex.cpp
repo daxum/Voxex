@@ -63,11 +63,8 @@ namespace {
 
 		std::stack<Aabb<int64_t>> regions;
 		regions.push(Aabb<int64_t>(chunk.getBox().min, chunk.getBox().max));
-		uint64_t boxes = 0;
 
 		while (!regions.empty()) {
-			boxes++;
-
 			Aabb<int64_t> box = regions.top();
 			regions.pop();
 
@@ -90,6 +87,37 @@ namespace {
 					if (add.getVolume() > 0) {
 						regions.push(add);
 					}
+				}
+			}
+		}
+
+		return chunk.genChunk();
+	}
+
+	std::shared_ptr<Chunk> worldGenChunk(const Pos_t& pos) {
+		ChunkBuilder chunk(pos);
+		Aabb<int64_t> chunkBox = chunk.getBox();
+
+		//Ground - anything below 0 is underground
+		if (chunkBox.max.y <= 0) {
+			Aabb<int64_t> groundBox = chunkBox;
+
+			chunk.addRegion({16, groundBox});
+		}
+
+		//Add layer of dirt and stone for terrain
+		else if (chunkBox.max.y <= 256 && chunkBox.min.y >= 0) {
+			for (int64_t i = pos.x; i < chunkBox.max.x-1; i++) {
+				for (int64_t j = pos.z; j < chunkBox.max.z-1; j++) {
+					float heightPercent = perlin2D({i, j});
+					int64_t height = (int64_t) (heightPercent * 255) + pos.y;
+					int64_t stoneHeight = pos.y + height / 2;
+
+					if (stoneHeight > 0) {
+						chunk.addRegion({16, Aabb<int64_t>({i, 0, j}, {i+1, stoneHeight, j+1})});
+					}
+
+					chunk.addRegion({2, Aabb<int64_t>({i, stoneHeight, j}, {i+1, height, j+1})});
 				}
 			}
 		}
@@ -123,7 +151,7 @@ void Voxex::createRenderObjects(std::shared_ptr<RenderInitializer> renderInit) {
 		{VERTEX_ELEMENT_POSITION, VertexElementType::VEC3},
 		{VERTEX_ELEMENT_PACKED_NORM_COLOR, VertexElementType::UINT32}},
 		BufferUsage::DEDICATED_SINGLE,
-		16'000'000
+		512'000'000
 	});
 
 	renderInit->addUniformSet(SCREEN_SET, UniformSet{
@@ -184,12 +212,6 @@ void Voxex::loadScreens(DisplayEngine& display) {
 			genExpect = genTime.load();
 			genAdd = end - start + genExpect;
 		} while (!genTime.compare_exchange_strong(genExpect, genAdd, std::memory_order_relaxed));
-
-		size_t startCount = chunk->regionCount();
-
-		chunk->optimize();
-
-		std::cout << "Reduced from " << startCount << " to " << chunk->regionCount() << " regions\n";
 
 		chunk->validate();
 		chunk->printStats();
