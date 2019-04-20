@@ -37,5 +37,22 @@ void ChunkBuilder::addRegion(const Region& reg) {
 		.box = Aabb<uint8_t>(min, max),
 	};
 
+	for (size_t i = 0; i < regions.size(); i++) {
+		InternalRegion testReg = regions.at(i);
+
+		Aabb<uint64_t> box1(testReg.box);
+		Aabb<uint64_t> box2(region.box);
+
+		box1.max += 1;
+		box2.max += 1;
+
+		if (box1.formsBoxWith(box2) && testReg.type == region.type) {
+			region.box = Aabb<uint8_t>(testReg.box, region.box);
+			regions.at(i) = regions.back();
+			regions.pop_back();
+			i = -1;
+		}
+	}
+
 	regions.push_back(region);
 }

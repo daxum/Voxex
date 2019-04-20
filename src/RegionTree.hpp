@@ -140,12 +140,6 @@ private:
 	std::vector<InternalRegion> regions;
 
 	/**
-	 * Checks if the tree is overloaded, and if it is, creates children and distributes
-	 * its regions among them.
-	 */
-	void trySplitTree();
-
-	/**
 	 * Fills the given block map with the regions stored in this tree.
 	 * @param map The map to fill.
 	 */
