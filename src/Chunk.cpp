@@ -56,10 +56,10 @@ ChunkMeshData Chunk::generateModel() {
 			} break;
 			//Facing -x
 			case 1: {
-				positions.at(0) = {fixedCoord, min.at(0), max.at(1)};
-				positions.at(1) = {fixedCoord, max.at(0), max.at(1)};
-				positions.at(2) = {fixedCoord, min.at(0), min.at(1)};
-				positions.at(3) = {fixedCoord, max.at(0), min.at(1)};
+				positions.at(0) = {fixedCoord, max.at(0), max.at(1)};
+				positions.at(1) = {fixedCoord, min.at(0), max.at(1)};
+				positions.at(2) = {fixedCoord, max.at(0), min.at(1)};
+				positions.at(3) = {fixedCoord, min.at(0), min.at(1)};
 			} break;
 			//Facing +z
 			case 2: {
@@ -70,10 +70,10 @@ ChunkMeshData Chunk::generateModel() {
 			} break;
 			//Facing +x
 			case 3: {
-				positions.at(0) = {fixedCoord, max.at(0), max.at(1)};
-				positions.at(1) = {fixedCoord, min.at(0), max.at(1)};
-				positions.at(2) = {fixedCoord, max.at(0), min.at(1)};
-				positions.at(3) = {fixedCoord, min.at(0), min.at(1)};
+				positions.at(0) = {fixedCoord, min.at(0), max.at(1)};
+				positions.at(1) = {fixedCoord, max.at(0), max.at(1)};
+				positions.at(2) = {fixedCoord, min.at(0), min.at(1)};
+				positions.at(3) = {fixedCoord, max.at(0), min.at(1)};
 			} break;
 			//Facing +y
 			case 4: {

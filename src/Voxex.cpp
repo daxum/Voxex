@@ -51,6 +51,37 @@ namespace {
 			out << "f " << (indices.at(i) + 1) << "// " << (indices.at(i+1) + 1) << "// " << (indices.at(i+2) + 1) << "//\n";
 		}
 	}
+
+	std::shared_ptr<Chunk> worldGenChunk(const Pos_t& pos) {
+		ChunkBuilder chunk(pos);
+		Aabb<int64_t> chunkBox = chunk.getBox();
+
+		//Ground - anything below 0 is underground
+		if (chunkBox.max.y <= 0) {
+			Aabb<int64_t> groundBox = chunkBox;
+
+			chunk.addRegion({16, groundBox});
+		}
+
+		//Add layer of dirt and stone for terrain
+		else if (chunkBox.max.y <= 256 && chunkBox.min.y >= 0) {
+			for (int64_t i = pos.x; i < chunkBox.max.x-1; i++) {
+				for (int64_t j = pos.z; j < chunkBox.max.z-1; j++) {
+					float heightPercent = perlin2D({i, j});
+					int64_t height = (int64_t) (heightPercent * 255) + pos.y;
+					int64_t stoneHeight = pos.y + height / 2;
+
+					if (stoneHeight > 0) {
+						chunk.addRegion({16, Aabb<int64_t>({i, 0, j}, {i+1, stoneHeight, j+1})});
+					}
+
+					chunk.addRegion({2, Aabb<int64_t>({i, stoneHeight, j}, {i+1, height, j+1})});
+				}
+			}
+		}
+
+		return chunk.genChunk();
+	}
 #pragma GCC diagnostic pop
 }
 
@@ -87,37 +118,6 @@ namespace {
 					if (add.getVolume() > 0) {
 						regions.push(add);
 					}
-				}
-			}
-		}
-
-		return chunk.genChunk();
-	}
-
-	std::shared_ptr<Chunk> worldGenChunk(const Pos_t& pos) {
-		ChunkBuilder chunk(pos);
-		Aabb<int64_t> chunkBox = chunk.getBox();
-
-		//Ground - anything below 0 is underground
-		if (chunkBox.max.y <= 0) {
-			Aabb<int64_t> groundBox = chunkBox;
-
-			chunk.addRegion({16, groundBox});
-		}
-
-		//Add layer of dirt and stone for terrain
-		else if (chunkBox.max.y <= 256 && chunkBox.min.y >= 0) {
-			for (int64_t i = pos.x; i < chunkBox.max.x-1; i++) {
-				for (int64_t j = pos.z; j < chunkBox.max.z-1; j++) {
-					float heightPercent = perlin2D({i, j});
-					int64_t height = (int64_t) (heightPercent * 255) + pos.y;
-					int64_t stoneHeight = pos.y + height / 2;
-
-					if (stoneHeight > 0) {
-						chunk.addRegion({16, Aabb<int64_t>({i, 0, j}, {i+1, stoneHeight, j+1})});
-					}
-
-					chunk.addRegion({2, Aabb<int64_t>({i, stoneHeight, j}, {i+1, height, j+1})});
 				}
 			}
 		}
@@ -236,7 +236,7 @@ void Voxex::loadScreens(DisplayEngine& display) {
 for (size_t val = 0; val < chunks.size(); val++) {
 //	Engine::parallelFor(0, chunks.size(), [&](size_t val) {
 		auto data = chunks.at(val)->generateModel();
-		//writeObj(data.model.name, data.mesh);
+		writeObj(data.model.name, data.mesh);
 
 		std::shared_ptr<Object> chunkObject = std::make_shared<Object>();
 

@@ -21,6 +21,7 @@
 #include "AxisAlignedBB.hpp"
 #include "RegionTree.hpp"
 #include "Model.hpp"
+#include "BlockMap.hpp"
 
 typedef Aabb<int64_t>::vec_t Pos_t;
 

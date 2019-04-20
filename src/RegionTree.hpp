@@ -23,6 +23,8 @@
 
 #include "AxisAlignedBB.hpp"
 
+class BlockMap;
+
 struct InternalRegion {
 	uint16_t type;
 	Aabb<uint8_t> box;
@@ -52,17 +54,34 @@ struct RegionFace {
 };
 
 inline std::ostream& operator<<(std::ostream& out, const RegionFace& face) {
-	out << "Face[" << (uint64_t)face.min.at(0) << ", " << (uint64_t)face.min.at(1) << " | " <<
-		(uint64_t)face.max.at(0) << ", " << (uint64_t)face.max.at(1) <<
-		" | Unused: " << (uint64_t)face.getUnusedAxis() << ", fixed: " << (uint64_t)face.fixedCoord << "]";
+	out << "Face[";
+
+	switch (face.getNormal()) {
+		//Z
+		case 0:
+		case 2:
+			out << face.min.at(0) << ", " << face.min.at(1) << ", " << face.fixedCoord << " | " << face.max.at(0) << ", " << face.max.at(1) << ", " << face.fixedCoord;
+			break;
+		//X
+		case 1:
+		case 3:
+			out << face.fixedCoord << ", " << face.min.at(0) << ", " << face.min.at(1) << " | " << face.fixedCoord << ", " << face.max.at(0) << ", " << face.max.at(1);
+			break;
+		//Y
+		case 4:
+		case 5:
+			out << face.min.at(0) << ", " << face.fixedCoord << ", " << face.min.at(1) << " | " << face.max.at(0) << ", " << face.fixedCoord << ", " << face.max.at(1);
+			break;
+		default: out << "Invalid position!";
+	}
+
+	out << " | facing: " << (uint64_t)face.getNormal() << "]";
 
 	return out;
 }
 
 class RegionTree {
 public:
-	typedef std::array<std::vector<RegionFace>, 3> FaceList;
-
 	constexpr static size_t splitCount = 1024;
 
 	/**
@@ -135,106 +154,23 @@ private:
 	void trySplitTree();
 
 	/**
-	 * Generates faces for the regions stored in this node and all its children.
-	 * @return A pair of lists of face. The first element is the "outer" faces,
-	 *     which might intersect with the other children of the parent node, and the
-	 *     second element is "inner" faces, which will only intersect with the parent.
+	 * Fills the given block map with the regions stored in this tree.
+	 * @param map The map to fill.
 	 */
-	std::pair<FaceList, FaceList> genQuadsInternal() const;
+	void fillMap(BlockMap& map) const;
 
 	/**
-	 * Removes any faces from the given list which are fully covered by other faces.
-	 * @param faceList The list to deduplicate. It should be as small as possible for
-	 *     good performance.
+	 * Generates faces for this tree's regions. All the faces are external and
+	 * fully uncovered, provided the map is correct.
+	 * @param map The map to use for coverage lookups.
+	 * @param faces A vector to store the generated faces in.
 	 */
-	static void deduplicateFaces(FaceList& faceList);
+	void generateFaces(const BlockMap& map, std::vector<RegionFace>& faces) const;
 
 	/**
-	 * Checks the face against every face in the given list, removing any faces that
-	 * would become fully covered by the given face. If the provided face is not fully
-	 * covered after every face is checked, it is added to the list.
-	 * @param addList The list to add the face to.
-	 * @param face The face to add.
+	 * Generates the faces for the provided region.
+	 * @param reg The region to generate faces for.
+	 * @return The generated faces.
 	 */
-	static void deduplicateAdd(FaceList& addList, RegionFace face);
-
-	/**
-	 * Returns whether the face is on the edge of the given box.
-	 * @param face The face to check.
-	 * @param box The box to check against.
-	 * @return Whether the face intersects with any face of the provided box.
-	 */
-	static bool isOnEdge(const RegionFace& face, const Aabb<uint16_t>& box) {
-		switch (face.getUnusedAxis()) {
-			//X
-			case 0: return face.fixedCoord == box.min.x || face.fixedCoord == box.max.x;
-			//Y
-			case 1: return face.fixedCoord == box.min.y || face.fixedCoord == box.max.y;
-			//Z
-			case 2: return face.fixedCoord == box.min.z || face.fixedCoord == box.max.z;
-			default: throw std::runtime_error("Recieved a >3 dimensional square");
-		}
-	}
-
-	/**
-	 * Merges two face lists.
-	 * @param list The list to insert into.
-	 * @param instert The list to insert.
-	 */
-	static void insertFaceList(FaceList& list, const FaceList& insert) {
-		for (size_t i = 0; i < list.size(); i++) {
-			list.at(i).insert(list.at(i).end(), insert.at(i).begin(), insert.at(i).end());
-		}
-	}
-
-	/**
-	 * Directly adds a face to a facelist.
-	 * @param list The list to add to.
-	 * @param face The face to add.
-	 */
-	static void addFaceToList(FaceList& list, const RegionFace& face) {
-		list.at(face.getUnusedAxis()).push_back(face);
-	}
-
-	/**
-	 * Merges the lists contained in the two FaceLists into a single list of all faces.
-	 * @param list The two lists two flatten.
-	 * @return The flattened list.
-	 */
-	static std::vector<RegionFace> flattenList(const std::pair<FaceList, FaceList>& list) {
-		std::vector<RegionFace> faces;
-
-		for (const std::vector<RegionFace>& faceVec : list.first) {
-			faces.insert(faces.end(), faceVec.begin(), faceVec.end());
-		}
-
-		for (const std::vector<RegionFace>& faceVec : list.second) {
-			faces.insert(faces.end(), faceVec.begin(), faceVec.end());
-		}
-
-		return faces;
-	}
-
-	/**
-	 * Checks whether the two faces are intersecting, and if they are, adds the
-	 * intersecting area to their total areas.
-	 * @param face1 The first face to check.
-	 * @param face2 The second face to check.
-	 */
-	static void handleFaceIntersection(RegionFace& face1, RegionFace& face2);
-
-	/**
-	 * Returns the size of the face list.
-	 * @param list The list to get the size of.
-	 * @return The size of the list.
-	 */
-	static size_t faceListSize(const FaceList& list) {
-		size_t count = 0;
-
-		for (const auto& vec : list) {
-			count += vec.size();
-		}
-
-		return count;
-	}
+	std::array<RegionFace, 6> genRegionFaces(const InternalRegion& region) const;
 };

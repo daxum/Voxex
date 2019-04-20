@@ -17,6 +17,7 @@
  ******************************************************************************/
 
 #include "RegionTree.hpp"
+#include "BlockMap.hpp"
 
 void RegionTree::addRegions(std::vector<InternalRegion> addRegs) {
 	children.clear();
@@ -140,82 +141,14 @@ size_t RegionTree::size() const {
 }
 
 std::vector<RegionFace> RegionTree::genQuads() const {
-	auto vecs = genQuadsInternal();
-	std::vector<RegionFace> faces = flattenList(vecs);
+	BlockMap map(box.min, Aabb<uint64_t>::vec_t(box.max) + Aabb<uint64_t>::vec_t(1, 1, 1));
+
+	fillMap(map);
+
+	std::vector<RegionFace> faces;
+	generateFaces(map, faces);
 
 	return faces;
-}
-
-std::pair<RegionTree::FaceList, RegionTree::FaceList> RegionTree::genQuadsInternal() const {
-	FaceList outerFaces;
-	FaceList innerFaces;
-
-	for (const RegionTree& child : children) {
-		std::pair<FaceList, FaceList> childFaces = child.genQuadsInternal();
-		insertFaceList(outerFaces, childFaces.first);
-		insertFaceList(innerFaces, childFaces.second);
-	}
-
-	deduplicateFaces(outerFaces);
-
-	//Expand the node's box from a block range to a bounding box
-	Aabb<uint16_t> expandedBox = box;
-	expandedBox.max += Aabb<uint16_t>::vec_t(1, 1, 1);
-
-	//Move inner faces for this box out of outer face list
-	for (std::vector<RegionFace>& outerList : outerFaces) {
-		for (size_t i = outerList.size() - 1; i + 1 > 0; i--) {
-			if (!isOnEdge(outerList.at(i), expandedBox)) {
-				addFaceToList(innerFaces, outerList.at(i));
-				outerList.at(i) = outerList.back();
-				outerList.pop_back();
-			}
-		}
-	}
-
-	FaceList currentFaces;
-
-	//Collect all region faces
-	for (const InternalRegion& region : regions) {
-		//Expand region box similarly to the node box above
-		Aabb<uint32_t> fullRegionBox = region.box;
-		fullRegionBox.max += Aabb<uint32_t>::vec_t(1, 1, 1);
-
-		uint32_t xArea = fullRegionBox.yLength() * fullRegionBox.zLength();
-		uint32_t yArea = fullRegionBox.xLength() * fullRegionBox.zLength();
-		uint32_t zArea = fullRegionBox.xLength() * fullRegionBox.yLength();
-
-		//Don't bother to use the expanded box here, it would only require more casting
-		Aabb<uint16_t>::vec_t min = region.box.min;
-		Aabb<uint16_t>::vec_t max(region.box.max.x + 1, region.box.max.y + 1, region.box.max.z + 1);
-
-		//north
-		addFaceToList(currentFaces, {0x80, min.z, {min.x, min.y}, {max.x, max.y}, region.type, 0, zArea});
-		//east
-		addFaceToList(currentFaces, {0x01, min.x, {min.y, min.z}, {max.y, max.z}, region.type, 0, xArea});
-		//south
-		addFaceToList(currentFaces, {0x82, max.z, {min.x, min.y}, {max.x, max.y}, region.type, 0, zArea});
-		//west
-		addFaceToList(currentFaces, {0x03, max.x, {min.y, min.z}, {max.y, max.z}, region.type, 0, xArea});
-		//up
-		addFaceToList(currentFaces, {0x44, max.y, {min.x, min.z}, {max.x, max.z}, region.type, 0, yArea});
-		//down
-		addFaceToList(currentFaces, {0x45, min.y, {min.x, min.z}, {max.x, max.z}, region.type, 0, yArea});
-	}
-
-	//Sort into inner and outer
-	for (size_t i = 0; i < currentFaces.size(); i++) {
-		for (const RegionFace& face : currentFaces.at(i)) {
-			if (isOnEdge(face, expandedBox)) {
-				deduplicateAdd(outerFaces, face);
-			}
-			else {
-				deduplicateAdd(innerFaces, face);
-			}
-		}
-	}
-
-	return {outerFaces, innerFaces};
 }
 
 void RegionTree::printCounts(std::string idents) const {
@@ -271,67 +204,59 @@ void RegionTree::trySplitTree() {
 	}
 }
 
-void RegionTree::deduplicateFaces(FaceList& faceList) {
-	for (std::vector<RegionFace>& faces : faceList) {
-		for (size_t i = 0; i < faces.size(); i++) {
-			//Skip faces already covered to shave off a few more milliseconds.
-			//Causes a very small number of addition faces to be missed (~50/270000)
-			if (faces.at(i).fullyCovered()) {
-				continue;
-			}
+void RegionTree::fillMap(BlockMap& map) const {
+	for (const InternalRegion& reg : regions) {
+		map.addRegionFill(reg);
+	}
 
-			for (size_t j = i + 1; j < faces.size(); j++) {
-				RegionFace& face1 = faces.at(i);
-				RegionFace& face2 = faces.at(j);
-
-				handleFaceIntersection(face1, face2);
-			}
-		}
-
-		//Iterate through and remove all faces where coveredArea >= totalArea (completely covered)
-		for (size_t i = 0; i < faces.size(); i++) {
-			if (faces.at(i).fullyCovered()) {
-				faces.at(i) = faces.back();
-				faces.pop_back();
-				i--;
-			}
-		}
+	for (const RegionTree& child : children) {
+		child.fillMap(map);
 	}
 }
 
-void RegionTree::deduplicateAdd(FaceList& addList, RegionFace face) {
-	std::vector<RegionFace>& list = addList.at(face.getUnusedAxis());
+void RegionTree::generateFaces(const BlockMap& map, std::vector<RegionFace>& faces) const {
+	//Collect all region faces, discard those which are covered
+	for (const InternalRegion& region : regions) {
+		std::array<RegionFace, 6> genFaces = genRegionFaces(region);
 
-	for (size_t i = list.size() - 1; i + 1 > 0; i--) {
-		handleFaceIntersection(face, list.at(i));
-
-		if (list.at(i).fullyCovered()) {
-			list.at(i) = list.back();
-			list.pop_back();
-		}
-
-		if (face.fullyCovered()) {
-			return;
+		for (const RegionFace& face : genFaces) {
+			if (map.isFaceVisible(face)) {
+				faces.push_back(face);
+			}
 		}
 	}
 
-	list.push_back(face);
+	//Recurse to children
+	for (const RegionTree& child : children) {
+		child.generateFaces(map, faces);
+	}
 }
 
-void RegionTree::handleFaceIntersection(RegionFace& face1, RegionFace& face2) {
-	if (face1.min.at(0) < face2.max.at(0) && face1.max.at(0) > face2.min.at(0) &&
-		face1.min.at(1) < face2.max.at(1) && face1.max.at(1) > face2.min.at(1) &&
-		face1.fixedCoord == face2.fixedCoord) {
-		//Find intersecting area
-		uint32_t interMinX = std::max(face1.min.at(0), face2.min.at(0));
-		uint32_t interMinY = std::max(face1.min.at(1), face2.min.at(1));
-		uint32_t interMaxX = std::min(face1.max.at(0), face2.max.at(0));
-		uint32_t interMaxY = std::min(face1.max.at(1), face2.max.at(1));
+std::array<RegionFace, 6> RegionTree::genRegionFaces(const InternalRegion& region) const {
+	//Expand region box into bounding box
+	Aabb<uint32_t> fullRegionBox = region.box;
+	fullRegionBox.max += Aabb<uint32_t>::vec_t(1, 1, 1);
 
-		uint32_t interArea = (interMaxX - interMinX) * (interMaxY - interMinY);
+	uint32_t xArea = fullRegionBox.yLength() * fullRegionBox.zLength();
+	uint32_t yArea = fullRegionBox.xLength() * fullRegionBox.zLength();
+	uint32_t zArea = fullRegionBox.xLength() * fullRegionBox.yLength();
 
-		//Add to covered area
-		face1.coveredArea += interArea;
-		face2.coveredArea += interArea;
-	}
+	//Don't bother to use the expanded box here, it would only require more casting
+	Aabb<uint16_t>::vec_t min = region.box.min;
+	Aabb<uint16_t>::vec_t max(region.box.max.x + 1, region.box.max.y + 1, region.box.max.z + 1);
+
+	return {
+		//north
+		RegionFace{0x80, min.z, {min.x, min.y}, {max.x, max.y}, region.type, 0, zArea},
+		//east
+		RegionFace{0x01, max.x, {min.y, min.z}, {max.y, max.z}, region.type, 0, xArea},
+		//south
+		RegionFace{0x82, max.z, {min.x, min.y}, {max.x, max.y}, region.type, 0, zArea},
+		//west
+		RegionFace{0x03, min.x, {min.y, min.z}, {max.y, max.z}, region.type, 0, xArea},
+		//up
+		RegionFace{0x44, max.y, {min.x, min.z}, {max.x, max.z}, region.type, 0, yArea},
+		//down
+		RegionFace{0x45, min.y, {min.x, min.z}, {max.x, max.z}, region.type, 0, yArea}
+	};
 }
