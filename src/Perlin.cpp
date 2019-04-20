@@ -37,9 +37,7 @@ namespace {
 		glm::vec3(0.0, -1.0, -1.0)
 	};
 
-	glm::vec3 getGradient(std::array<int64_t, 3> pos) {
-		uint64_t seedHash = std::hash<std::string>()(seed);
-
+	glm::vec3 getGradient(std::array<int64_t, 3> pos, uint64_t seedHash = std::hash<std::string>()(seed)) {
 		uint64_t x = pos.at(0);
 		uint64_t y = pos.at(1);
 		uint64_t z = pos.at(2);
@@ -80,9 +78,7 @@ float perlin1D(int64_t point) {
 	return (ExMath::interpolate<float>(cornerGrads.at(0), cornerGrads.at(1), xPercent) + 1.0f) / 2.0f;
 }
 
-float perlin2D(std::array<int64_t, 2> point) {
-	const int64_t gridScale = 512;
-
+float perlin2D(std::array<int64_t, 2> point, int64_t gridScale, uint64_t seedHash) {
 	glm::vec2 min(point.at(0) / gridScale * gridScale, point.at(1) / gridScale * gridScale);
 	glm::vec2 max(point.at(0) / gridScale * gridScale + gridScale, point.at(1) / gridScale * gridScale + gridScale);
 
@@ -106,7 +102,7 @@ float perlin2D(std::array<int64_t, 2> point) {
 	std::array<glm::vec2, 4> cornerGrads;
 
 	for (size_t i = 0; i < cornerGrads.size(); i++) {
-		cornerGrads.at(i) = getGradient({(int64_t)corners.at(i).x, (int64_t)corners.at(i).y, 0});
+		cornerGrads.at(i) = getGradient({(int64_t)corners.at(i).x, (int64_t)corners.at(i).y, 0}, seedHash);
 	}
 
 	glm::vec2 fPoint(
@@ -129,6 +125,23 @@ float perlin2D(std::array<int64_t, 2> point) {
 	float yPercent = smooth((fPoint.y - min.y) / (max.y-min.y));
 
 	return (ExMath::bilinearInterpolate<float>(dotProducts, xPercent, yPercent) + 1.0f) / 2.0f;
+}
+
+float perlin2DOctaves(std::array<int64_t, 2> point, uint64_t octaves, int64_t gridScale, uint64_t seedHash) {
+	float persistance = 0.5f;
+	float sum = 0.0f;
+	float amplitude = 1.0f;
+	float max = 0.0f;
+	int64_t frequency = 1;
+
+	for (size_t i = 0; i < octaves; i++) {
+		sum += amplitude * perlin2D({point.at(0) * frequency, point.at(1) * frequency}, gridScale, seedHash);
+		max += amplitude;
+		amplitude *= persistance;
+		frequency *= 2;
+	}
+
+	return sum / max;
 }
 
 float perlin3D(Aabb<int64_t>::vec_t point, int64_t gridScale) {

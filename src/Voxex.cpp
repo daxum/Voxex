@@ -55,6 +55,8 @@ namespace {
 	}
 
 	std::shared_ptr<Chunk> worldGenChunk(const Pos_t& pos) {
+		const std::string seed = "WorldMaker";
+
 		ChunkBuilder chunk(pos);
 		Aabb<int64_t> chunkBox = chunk.getBox();
 
@@ -69,7 +71,7 @@ namespace {
 		else if (chunkBox.max.y <= 256 && chunkBox.min.y >= 0) {
 			for (int64_t i = pos.x; i < chunkBox.max.x; i++) {
 				for (int64_t j = pos.z; j < chunkBox.max.z; j++) {
-					float heightPercent = perlin2D({i, j});
+					float heightPercent = perlin2DOctaves({i, j}, 8, 512, std::hash<std::string>()(seed));
 					int64_t height = (int64_t) (heightPercent * 255) + pos.y;
 					int64_t stoneHeight = pos.y + height / 2;
 

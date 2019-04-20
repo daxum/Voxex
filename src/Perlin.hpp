@@ -25,6 +25,8 @@
 
 float perlin1D(int64_t point);
 
-float perlin2D(std::array<int64_t, 2> point);
+float perlin2D(std::array<int64_t, 2> point, int64_t gridScale, uint64_t seedHash);
+
+float perlin2DOctaves(std::array<int64_t, 2> point, uint64_t octaves, int64_t gridScale, uint64_t seedHash);
 
 float perlin3D(Aabb<int64_t>::vec_t point, int64_t gridScale);
