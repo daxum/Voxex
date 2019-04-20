@@ -61,6 +61,10 @@ public:
 	 */
 	void setTarget(PhysicsComponent* comp);
 
+	/**
+	 * Returns the physics component of the object this mob is targeting.
+	 * @return The targeted physics component, or nullptr if there is no target.
+	 */
 	PhysicsComponent* getTarget() { return target.lock() ? target.lock()->getComponent<PhysicsComponent>(PHYSICS_COMPONENT_NAME).get() : nullptr; }
 
 	/**
