@@ -35,19 +35,19 @@ int main(int argc, char** argv) {
 	config.resourceBase = "";
 
 	config.generalLog.type = LogType::STDOUT;
-	config.generalLog.mask = DEBUG | INFO | WARN | ERROR | FATAL;
+	config.generalLog.mask = INFO | WARN | ERROR | FATAL;
 
 	config.rendererLog.type = LogType::STDOUT;
 	config.rendererLog.mask = INFO | WARN | ERROR | FATAL;
 
 	config.loaderLog.type = LogType::STDOUT;
-	config.loaderLog.mask = DEBUG | INFO | WARN | ERROR | FATAL;
+	config.loaderLog.mask = INFO | WARN | ERROR | FATAL;
 
 	config.modelLog.type = LogType::STDOUT;
 	config.modelLog.mask = INFO | WARN | ERROR | FATAL;
 
 	config.componentLog.type =  LogType::STDOUT;
-	config.componentLog.mask = DEBUG | INFO | WARN | ERROR | FATAL;
+	config.componentLog.mask = INFO | WARN | ERROR | FATAL;
 
 	Engine engine(config);
 

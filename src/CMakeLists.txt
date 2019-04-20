@@ -17,6 +17,7 @@ add_executable(voxex
 	Perlin.cpp
 	SquareCamera.cpp
 	ControlledAI.cpp
+	ChunkBuilder.cpp
 )
 
 set_target_properties(voxex PROPERTIES

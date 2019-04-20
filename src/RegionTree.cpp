@@ -17,59 +17,117 @@
  ******************************************************************************/
 
 #include "RegionTree.hpp"
+#include "BlockMap.hpp"
 
-void RegionTree::addRegions(std::vector<InternalRegion>& addRegs) {
-	//Split up regions to remove intersections with this node
-	for (size_t i = 0; i < addRegs.size(); i++) {
-		InternalRegion& next = addRegs.at(i);
+void RegionTree::addRegions(std::vector<InternalRegion> addRegs) {
+	children.clear();
+	regions.clear();
 
-		for (const InternalRegion& region : regions) {
-			//Split node if intersecting
-			if (next.box.intersects(region.box)) {
-				std::vector<Aabb<uint8_t>> subRegions = next.box.subtract(region.box);
+	if (addRegs.size() <= splitCount) {
+		regions = addRegs;
+		return;
+	}
 
-				for (const Aabb<uint8_t>& box : subRegions) {
-					addRegs.push_back(InternalRegion{region.type, box});
+	//Find optimal splits for this node
+	glm::vec3 avgCenter(0.0f, 0.0f, 0.0f);
+
+	for (const InternalRegion& reg : addRegs) {
+		avgCenter += Aabb<float>(reg.box).getCenter();
+	}
+
+	avgCenter /= addRegs.size();
+	std::array<std::array<size_t, 3>, 3> boxSplitCounts = {};
+
+	//Determine best axis for split (least variation between halves)
+	for (const InternalRegion& reg : addRegs) {
+		for(size_t axis = 0; axis < 3; axis++) {
+			if (reg.box.max[axis] < avgCenter[axis]) {
+				boxSplitCounts[axis][0]++;
+			}
+			else if (reg.box.min[axis] > avgCenter[axis]) {
+				boxSplitCounts[axis][2]++;
+			}
+			else {
+				boxSplitCounts[axis][1]++;
+			}
+		}
+	}
+
+	std::array<size_t, 3> axisScores = {};
+
+	for (size_t i = 0; i < 3; i++) {
+		size_t left = boxSplitCounts[i][0];
+		size_t center = boxSplitCounts[i][1];
+		size_t right = boxSplitCounts[i][2];
+
+		size_t lrDiff = std::max(left, right) - std::min(left, right);
+		size_t lcDiff = std::max(left, center) - std::min(left, center);
+		size_t rcDiff = std::max(right, center) - std::min(right, center);
+
+		axisScores[i] = lrDiff + lcDiff + rcDiff;
+	}
+
+	size_t minAxis = 0;
+
+	for (size_t i = 0; i < 3; i++) {
+		minAxis = axisScores[i] < axisScores[minAxis] ? i : minAxis;
+	}
+
+	size_t splitBlock = (uint8_t) avgCenter[minAxis];
+
+	//Force extra regions to move to children
+	if (boxSplitCounts[minAxis][1] > splitCount) {
+		size_t toRemove = boxSplitCounts[minAxis][1] - splitCount;
+
+		for (size_t i = 0; i < addRegs.size(); i++) {
+			InternalRegion& reg = addRegs.at(i);
+
+			if (reg.box.min[minAxis] <= splitBlock && reg.box.max[minAxis] > splitBlock) {
+				std::array<Aabb<uint8_t>, 2> boxes = reg.box.bisect(minAxis, splitBlock);
+				boxes[1].min[minAxis]++;
+				reg.box = boxes[0];
+
+				if (boxes[1].min[minAxis] <= boxes[1].max[minAxis]) {
+					addRegs.push_back({reg.type, boxes[1]});
 				}
 
-				//Remove split box
+				toRemove--;
+
+				if (toRemove == 0) {
+					break;
+				}
+			}
+		}
+	}
+
+	//Create children
+	std::array<Aabb<uint8_t>, 2> childBoxes = box.bisect(minAxis, splitBlock);
+
+	for (Aabb<uint8_t> childBox : childBoxes) {
+		//Internal regions are stored as blocks, not bounding boxes, so
+		//we have to make sure two children can't contain the same region
+		if (childBox.min[minAxis] == splitBlock) childBox.min[minAxis]++;
+
+		children.emplace_back(childBox);
+
+		//Add regions to child
+		std::vector<InternalRegion> childAdd;
+
+		for (size_t i = addRegs.size() - 1; i + 1 > 0; i--) {
+			InternalRegion reg = addRegs.at(i);
+
+			if (childBox.contains(reg.box)) {
+				childAdd.push_back(reg);
 				addRegs.at(i) = addRegs.back();
 				addRegs.pop_back();
-				i--;
-
-				break;
 			}
 		}
+
+		children.back().addRegions(childAdd);
 	}
 
-	//Recurse to children, so the smallest boxes end up at the bottom of the tree,
-	//and all boxes get split (no intersections!)
-	for (RegionTree& child : children) {
-		for (const InternalRegion& reg : addRegs) {
-			//Only recurse if we have a box that intersects with the child
-			if (reg.box.intersects(child.box)) {
-				child.addRegions(addRegs);
-				break;
-			}
-		}
-	}
-
-	//Add whatever's left that fits in this box
-	for (size_t i = 0; i < addRegs.size(); i++) {
-		InternalRegion& reg = addRegs.at(i);
-
-		if (box.contains(reg.box)) {
-			regions.push_back(reg);
-			addRegs.at(i) = addRegs.back();
-			addRegs.pop_back();
-			i--;
-		}
-	}
-
-	//Split tree if overloaded
-	if (regions.size() > splitCount) {
-		trySplitTree();
-	}
+	//Everything else goes in this node
+	regions = addRegs;
 }
 
 size_t RegionTree::size() const {
@@ -83,80 +141,14 @@ size_t RegionTree::size() const {
 }
 
 std::vector<RegionFace> RegionTree::genQuads() const {
-	double start = ExMath::getTimeMillis();
+	BlockMap map(box.min, Aabb<uint64_t>::vec_t(box.max) + Aabb<uint64_t>::vec_t(1, 1, 1));
 
-	auto vecs = genQuadsInternal();
-	std::vector<RegionFace> faces = flattenList(vecs);
+	fillMap(map);
 
-	double end = ExMath::getTimeMillis();
-
-	std::cout << "Reduced from " << (size() * 6) << " to " << faces.size() << " faces - " <<
-				 "completed in " << (end-start) << "ms\n";
+	std::vector<RegionFace> faces;
+	generateFaces(map, faces);
 
 	return faces;
-}
-
-std::pair<RegionTree::FaceList, RegionTree::FaceList> RegionTree::genQuadsInternal() const {
-	FaceList outerFaces;
-	FaceList innerFaces;
-
-	for (const RegionTree& child : children) {
-		std::pair<FaceList, FaceList> childFaces = child.genQuadsInternal();
-		insertFaceList(outerFaces, childFaces.first);
-		insertFaceList(innerFaces, childFaces.second);
-	}
-
-	deduplicateFaces(outerFaces);
-
-	//Move inner faces for this box out of outer face list
-	for (size_t i = 0; i < outerFaces.size(); i++) {
-		std::vector<RegionFace>& outerList = outerFaces.at(i);
-
-		for (size_t j = 0; j < outerList.size(); j++) {
-			if (!isOnEdge(outerList.at(j), box)) {
-				addFaceToList(innerFaces, outerList.at(j));
-				outerList.at(j) = outerList.back();
-				outerList.pop_back();
-				j--;
-			}
-		}
-	}
-
-	FaceList currentFaces;
-
-	//Collect all region faces
-	for (const InternalRegion& region : regions) {
-		uint32_t xArea = (uint32_t)region.box.yLength() * (uint32_t)region.box.zLength();
-		uint32_t yArea = (uint32_t)region.box.xLength() * (uint32_t)region.box.zLength();
-		uint32_t zArea = (uint32_t)region.box.xLength() * (uint32_t)region.box.yLength();
-
-		//north
-		addFaceToList(currentFaces, {0x80, region.box.min.z, {region.box.min.x, region.box.min.y}, {region.box.max.x, region.box.max.y}, region.type, 0, zArea});
-		//east
-		addFaceToList(currentFaces, {0x01, region.box.min.x, {region.box.min.y, region.box.min.z}, {region.box.max.y, region.box.max.z}, region.type, 0, xArea});
-		//south
-		addFaceToList(currentFaces, {0x82, region.box.max.z, {region.box.min.x, region.box.min.y}, {region.box.max.x, region.box.max.y}, region.type, 0, zArea});
-		//west
-		addFaceToList(currentFaces, {0x03, region.box.max.x, {region.box.min.y, region.box.min.z}, {region.box.max.y, region.box.max.z}, region.type, 0, xArea});
-		//up
-		addFaceToList(currentFaces, {0x44, region.box.max.y, {region.box.min.x, region.box.min.z}, {region.box.max.x, region.box.max.z}, region.type, 0, yArea});
-		//down
-		addFaceToList(currentFaces, {0x45, region.box.min.y, {region.box.min.x, region.box.min.z}, {region.box.max.x, region.box.max.z}, region.type, 0, yArea});
-	}
-
-	//Sort into inner and outer
-	for (size_t i = 0; i < currentFaces.size(); i++) {
-		for (const RegionFace& face : currentFaces.at(i)) {
-			if (isOnEdge(face, box)) {
-				deduplicateAdd(outerFaces, face);
-			}
-			else {
-				deduplicateAdd(innerFaces, face);
-			}
-		}
-	}
-
-	return {outerFaces, innerFaces};
 }
 
 void RegionTree::printCounts(std::string idents) const {
@@ -190,50 +182,18 @@ size_t RegionTree::getMemUsage() const {
 	return mem;
 }
 
-void RegionTree::optimizeTree() {
-	regions.reserve(size());
-
-	for (RegionTree& child : children) {
-		child.optimizeTree();
-		regions.insert(regions.end(), child.regions.begin(), child.regions.end());
-		child.regions.clear();
-	}
-
-	for (size_t i = 0; i < regions.size(); i++) {
-		for (size_t j = i + 1; j < regions.size(); j++) {
-			if (regions.at(i).box.formsBoxWith(regions.at(j).box) /*&& regions.at(i).type == regions.at(j).type*/) {
-				regions.at(i) = InternalRegion{regions.at(i).type, Aabb<uint8_t>(regions.at(i).box, regions.at(j).box)};
-				regions.at(j) = regions.back();
-				regions.pop_back();
-				i = 0 - 1;
-				break;
-			}
-		}
-	}
-
-	bool pruneChildren = true;
-
-	for (RegionTree& child : children) {
-		child.addRegions(regions);
-
-		if (!child.isLeaf() || !child.regions.empty()) {
-			pruneChildren = false;
-		}
-	}
-
-	if (!isLeaf() && pruneChildren) {
-		children.clear();
-	}
-
-	regions.shrink_to_fit();
-}
-
 void RegionTree::trySplitTree() {
 	//Don't split more than once, and don't go beyond min length
 	if (children.size() == 0 && box.xLength() > 1) {
 		std::array<Aabb<uint8_t>, 8> childBoxes = box.split();
 
 		for (Aabb<uint8_t> childBox : childBoxes) {
+			//Internal regions are stored as blocks, not bounding boxes, so
+			//we have to make sure two children can't contain the same region
+			if (childBox.min.x != 0) childBox.min.x++;
+			if (childBox.min.y != 0) childBox.min.y++;
+			if (childBox.min.z != 0) childBox.min.z++;
+
 			children.emplace_back(childBox);
 		}
 
@@ -244,68 +204,51 @@ void RegionTree::trySplitTree() {
 	}
 }
 
-void RegionTree::deduplicateFaces(FaceList& faceList) {
-	for (std::vector<RegionFace>& faces : faceList) {
-		for (size_t i = 0; i < faces.size(); i++) {
-			//Skip faces already covered to shave off a few more milliseconds.
-			//Causes a very small number of addition faces to be missed (~50/270000)
-			if (faces.at(i).coveredArea >= faces.at(i).totalArea) {
-				continue;
-			}
+void RegionTree::fillMap(BlockMap& map) const {
+	for (const InternalRegion& reg : regions) {
+		map.addRegionFill(reg);
+	}
 
-			for (size_t j = i + 1; j < faces.size(); j++) {
-				RegionFace& face1 = faces.at(i);
-				RegionFace& face2 = faces.at(j);
-
-				handleFaceIntersection(face1, face2);
-			}
-		}
-
-		//Iterate through and remove all faces where coveredArea >= totalArea (completely covered)
-		for (size_t i = 0; i < faces.size(); i++) {
-			if (faces.at(i).fullyCovered()) {
-				faces.at(i) = faces.back();
-				faces.pop_back();
-				i--;
-			}
-		}
+	for (const RegionTree& child : children) {
+		child.fillMap(map);
 	}
 }
 
-void RegionTree::deduplicateAdd(FaceList& addList, RegionFace face) {
-	std::vector<RegionFace>& list = addList.at(face.getUnusedAxis());
+void RegionTree::generateFaces(const BlockMap& map, std::vector<RegionFace>& faces) const {
+	//Collect all region faces, discard those which are covered
+	for (const InternalRegion& region : regions) {
+		std::array<RegionFace, 6> genFaces = genRegionFaces(region);
 
-	for (size_t i = 0; i < list.size(); i++) {
-		handleFaceIntersection(face, list.at(i));
-
-		if (list.at(i).fullyCovered()) {
-			list.at(i) = list.back();
-			list.pop_back();
-			i--;
-		}
-
-		if (face.fullyCovered()) {
-			return;
+		for (const RegionFace& face : genFaces) {
+			if (map.isFaceVisible(face)) {
+				faces.push_back(face);
+			}
 		}
 	}
 
-	list.push_back(face);
+	//Recurse to children
+	for (const RegionTree& child : children) {
+		child.generateFaces(map, faces);
+	}
 }
 
-void RegionTree::handleFaceIntersection(RegionFace& face1, RegionFace& face2) {
-	if (face1.min.at(0) < face2.max.at(0) && face1.max.at(0) > face2.min.at(0) &&
-		face1.min.at(1) < face2.max.at(1) && face1.max.at(1) > face2.min.at(1) &&
-		face1.fixedCoord == face2.fixedCoord) {
-		//Find intersecting area
-		uint32_t interMinX = std::max(face1.min.at(0), face2.min.at(0));
-		uint32_t interMinY = std::max(face1.min.at(1), face2.min.at(1));
-		uint32_t interMaxX = std::min(face1.max.at(0), face2.max.at(0));
-		uint32_t interMaxY = std::min(face1.max.at(1), face2.max.at(1));
+std::array<RegionFace, 6> RegionTree::genRegionFaces(const InternalRegion& region) const {
+	//Don't bother to use the expanded box here, it would only require more casting
+	Aabb<uint16_t>::vec_t min = region.box.min;
+	Aabb<uint16_t>::vec_t max(region.box.max.x + 1, region.box.max.y + 1, region.box.max.z + 1);
 
-		uint32_t interArea = (interMaxX - interMinX) * (interMaxY - interMinY);
-
-		//Add to covered area
-		face1.coveredArea += interArea;
-		face2.coveredArea += interArea;
-	}
+	return {
+		//north
+		RegionFace{min.z, {min.x, min.y}, {max.x, max.y}, region.type},
+		//east
+		RegionFace{(uint16_t) (0x200 | max.x), {min.y, min.z}, {max.y, max.z}, region.type},
+		//south
+		RegionFace{(uint16_t) (0x400 | max.z), {min.x, min.y}, {max.x, max.y}, region.type},
+		//west
+		RegionFace{(uint16_t) (0x600 | min.x), {min.y, min.z}, {max.y, max.z}, region.type},
+		//up
+		RegionFace{(uint16_t) (0x800 | max.y), {min.x, min.z}, {max.x, max.z}, region.type},
+		//down
+		RegionFace{(uint16_t) (0xA00 | min.y), {min.x, min.z}, {max.x, max.z}, region.type}
+	};
 }

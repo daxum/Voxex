@@ -21,6 +21,7 @@
 #include "AxisAlignedBB.hpp"
 #include "RegionTree.hpp"
 #include "Model.hpp"
+#include "BlockMap.hpp"
 
 typedef Aabb<int64_t>::vec_t Pos_t;
 
@@ -37,13 +38,17 @@ struct ChunkMeshData {
 
 class Chunk {
 public:
-	Chunk(Pos_t pos) : box(pos, pos + Pos_t{256, 256, 256}) {}
+	Chunk(const Aabb<uint64_t>& box, const std::vector<InternalRegion>& addRegs) :
+		box(box) {
+
+		regions.addRegions(addRegs);
+	}
 
 	/**
 	 * Adds a region to the chunk, without overwriting old regions.
 	 * @param reg The region to add.
 	 */
-	void addRegion(const Region& reg);
+	void addRegion(const Region& reg) { /** TODO **/ }
 
 	/**
 	 * Generates a mesh from this chunk using the specific colors for its regions.
@@ -63,13 +68,6 @@ public:
 	 * number of nodes, and other info.
 	 */
 	void printStats();
-
-	/**
-	 * Attempts to minimize the number of regions in the chunk by merging
-	 * adjacent boxes with the same type.
-	 * This may be rendered unneccessary by better region storage later.
-	 */
-	void optimize() { regions.optimizeTree(); }
 
 	/**
 	 * Checks whether any regions in the chunk are overlapping.

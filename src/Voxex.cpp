@@ -19,9 +19,10 @@
 #include <atomic>
 #include <mutex>
 #include <stack>
+#include <fstream>
 
 #include "Voxex.hpp"
-#include "Chunk.hpp"
+#include "ChunkBuilder.hpp"
 #include "ExtraMath.hpp"
 #include "AxisAlignedBB.hpp"
 #include "Perlin.hpp"
@@ -32,20 +33,71 @@
 #include "ControlledAI.hpp"
 #include "SquareCamera.hpp"
 
+namespace {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
+	void writeObj(const std::string& outFile, const Mesh& mesh) {
+		std::ofstream out(outFile + ".obj");
+		const unsigned char* vertData = std::get<0>(mesh.getMeshData());
+		size_t vertSize = std::get<1>(mesh.getMeshData());
+		const std::vector<uint32_t>& indices = std::get<2>(mesh.getMeshData());
+
+		out << "o " << outFile << "\n";
+
+		for (size_t i = 0; i < vertSize / 16; i++) {
+			glm::vec3 vert = *(glm::vec3*)&vertData[i*16];
+			out << "v " << vert.x << " " << vert.y << " " << vert.z << "\n";
+		}
+
+		for (size_t i = 0; i < indices.size(); i += 3) {
+			out << "f " << (indices.at(i) + 1) << "// " << (indices.at(i+1) + 1) << "// " << (indices.at(i+2) + 1) << "//\n";
+		}
+	}
+
+	std::shared_ptr<Chunk> worldGenChunk(const Pos_t& pos) {
+		ChunkBuilder chunk(pos);
+		Aabb<int64_t> chunkBox = chunk.getBox();
+
+		//Ground - anything below 0 is underground
+		if (chunkBox.max.y <= 0) {
+			Aabb<int64_t> groundBox = chunkBox;
+
+			chunk.addRegion({16, groundBox});
+		}
+
+		//Add layer of dirt and stone for terrain
+		else if (chunkBox.max.y <= 256 && chunkBox.min.y >= 0) {
+			for (int64_t i = pos.x; i < chunkBox.max.x; i++) {
+				for (int64_t j = pos.z; j < chunkBox.max.z; j++) {
+					float heightPercent = perlin2D({i, j});
+					int64_t height = (int64_t) (heightPercent * 255) + pos.y;
+					int64_t stoneHeight = pos.y + height / 2;
+
+					if (stoneHeight > 0) {
+						chunk.addRegion({16, Aabb<int64_t>({i, 0, j}, {i+1, stoneHeight, j+1})});
+					}
+
+					chunk.addRegion({2, Aabb<int64_t>({i, stoneHeight, j}, {i+1, height, j+1})});
+				}
+			}
+		}
+
+		return chunk.genChunk();
+	}
+#pragma GCC diagnostic pop
+}
+
 const UniformSet Voxex::chunkSet = UniformSet{UniformSetType::MODEL_DYNAMIC, 1024, {}};
 
 //TODO: This stuff goes elsewhere, most likely in its own class
 namespace {
-	Chunk genChunk(const Pos_t& pos) {
-		Chunk chunk(pos);
+	std::shared_ptr<Chunk> genChunk(const Pos_t& pos) {
+		ChunkBuilder chunk(pos);
 
 		std::stack<Aabb<int64_t>> regions;
-		regions.push(Aabb<int64_t>(chunk.getBox().min, chunk.getBox().max - Pos_t(1, 1, 1)));
-		uint64_t boxes = 0;
+		regions.push(Aabb<int64_t>(chunk.getBox().min, chunk.getBox().max));
 
 		while (!regions.empty()) {
-			boxes++;
-
 			Aabb<int64_t> box = regions.top();
 			regions.pop();
 
@@ -72,7 +124,7 @@ namespace {
 			}
 		}
 
-		return chunk;
+		return chunk.genChunk();
 	}
 
 	struct ShaderNames {
@@ -101,7 +153,7 @@ void Voxex::createRenderObjects(std::shared_ptr<RenderInitializer> renderInit) {
 		{VERTEX_ELEMENT_POSITION, VertexElementType::VEC3},
 		{VERTEX_ELEMENT_PACKED_NORM_COLOR, VertexElementType::UINT32}},
 		BufferUsage::DEDICATED_SINGLE,
-		536'870'912
+		1'073'741'824
 	});
 
 	renderInit->addUniformSet(SCREEN_SET, UniformSet{
@@ -134,7 +186,7 @@ void Voxex::loadScreens(DisplayEngine& display) {
 	world->addComponentManager(std::make_shared<PhysicsComponentManager>());
 	world->addComponentManager(std::make_shared<AIComponentManager>());
 
-	std::vector<Chunk> chunks;
+	std::vector<std::shared_ptr<Chunk>> chunks;
 	std::mutex chunkLock;
 
 	constexpr size_t maxI = 4;
@@ -151,7 +203,7 @@ void Voxex::loadScreens(DisplayEngine& display) {
 		size_t k = val % maxK;
 
 		double start = ExMath::getTimeMillis();
-		Chunk chunk = genChunk(Pos_t{256*i-256*(maxI/2), 256*j-256*(maxJ/2), 256*k-256*(maxK/2)});
+		std::shared_ptr<Chunk> chunk = genChunk(Pos_t{256*i-256*(maxI/2), 256*j-256*(maxJ/2), 256*k-256*(maxK/2)});
 		double end = ExMath::getTimeMillis();
 
 		std::cout << "Generated chunk " << val << " in " << end - start << "ms\n";
@@ -164,14 +216,8 @@ void Voxex::loadScreens(DisplayEngine& display) {
 			genAdd = end - start + genExpect;
 		} while (!genTime.compare_exchange_strong(genExpect, genAdd, std::memory_order_relaxed));
 
-		size_t startCount = chunk.regionCount();
-
-		chunk.optimize();
-
-		std::cout << "Reduced from " << startCount << " to " << chunk.regionCount() << " regions\n";
-
-		chunk.validate();
-		chunk.printStats();
+		chunk->validate();
+		chunk->printStats();
 
 		{
 			std::lock_guard<std::mutex> guard(chunkLock);
@@ -185,14 +231,19 @@ void Voxex::loadScreens(DisplayEngine& display) {
 	size_t totalMemUsage = 0;
 
 	for (size_t i = 0; i < chunks.size(); i++) {
-		totalRegions += chunks.at(i).regionCount();
-		totalMemUsage += chunks.at(i).getMemUsage();
+		totalRegions += chunks.at(i)->regionCount();
+		totalMemUsage += chunks.at(i)->getMemUsage();
 	}
 
 //TODO: Multithread face generation only - can't upload off the main thread in opengl
 for (size_t val = 0; val < chunks.size(); val++) {
 //	Engine::parallelFor(0, chunks.size(), [&](size_t val) {
-		auto data = chunks.at(val).generateModel();
+		if (chunks.at(val)->regionCount() == 0) {
+			continue;
+		}
+
+		auto data = chunks.at(val)->generateModel();
+		//writeObj(data.model.name, data.mesh);
 
 		std::shared_ptr<Object> chunkObject = std::make_shared<Object>();
 
@@ -202,7 +253,7 @@ for (size_t val = 0; val < chunks.size(); val++) {
 			Engine::instance->getModelManager().addModel(data.name, std::move(data.model));
 
 			chunkObject->addComponent(std::make_shared<RenderComponent>(data.name));
-			glm::vec3 chunkPos = chunks.at(val).getBox().getCenter();
+			glm::vec3 chunkPos = chunks.at(val)->getBox().getCenter();
 			chunkPos.z = -chunkPos.z;
 			chunkObject->addComponent(std::make_shared<PhysicsComponent>(std::make_shared<PhysicsObject>(data.name, chunkPos)));
 		}
