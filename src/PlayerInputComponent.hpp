@@ -22,7 +22,7 @@
 
 class PlayerInputComponent : public AIComponent{
 public:
-	PlayerInputComponent() : AIComponent(true), setTarget(false) {}
+	PlayerInputComponent() : AIComponent(true), setTarget(false), lastScreen(nullptr) {}
 
 	void update(Screen* screen) override;
 
@@ -30,4 +30,6 @@ public:
 
 private:
 	bool setTarget;
+	//Temp hack, needs engine changes to pass screen to onEvent.
+	Screen* lastScreen;
 };

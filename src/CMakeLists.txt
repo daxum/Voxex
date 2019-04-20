@@ -19,6 +19,7 @@ add_executable(voxex
 	Mobs/Adventurer.cpp
 	Mobs/Mob.cpp
 	PlayerInputComponent.cpp
+	FollowCamera.cpp
 )
 
 set_target_properties(voxex PROPERTIES

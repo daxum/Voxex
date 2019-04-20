@@ -34,8 +34,6 @@ public:
 	 */
 	Mob(UpdateState startingState = UpdateState::ACTIVE, size_t startingTime = 0, bool concurrent = false) :
 		UpdateComponent(startingState, startingTime, concurrent),
-		focalPoint(0.0, 0.0, 10.0),
-		focalDistance(10.0f),
 		triedMove(false) {}
 
 	/**
@@ -63,10 +61,7 @@ public:
 	 */
 	void setTarget(PhysicsComponent* comp);
 
-	/**
-	 * Sets the focal point to be oriented behind the mob, based on its rotation.
-	 */
-	void resetFocalPoint();
+	PhysicsComponent* getTarget() { return target.lock() ? target.lock()->getComponent<PhysicsComponent>(PHYSICS_COMPONENT_NAME).get() : nullptr; }
 
 	/**
 	 * Gets the parent object's state.
@@ -94,22 +89,12 @@ public:
 	}
 
 	/**
-	 * Gets the focal point of object movement, used primarily by the camera.
-	 * @return The focal point used to define a forward vector.
-	 */
-	glm::vec3 getFocalPoint() { return focalPoint; }
-
-	/**
 	 * Updates the object's state.
 	 * @param screen The parent screen.
 	 */
 	void update(Screen* screen) override;
 
 private:
-	//Used to determine movement vectors and rotation.
-	glm::vec3 focalPoint;
-	//Target distance of the focal point from the object.
-	float focalDistance;
 	//Whether the AI tried to move in the last tick.
 	bool triedMove;
 	//Targeted object.

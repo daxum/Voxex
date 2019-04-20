@@ -21,16 +21,20 @@
 #include "PhysicsComponentManager.hpp"
 #include "Mobs/MobState.hpp"
 #include "Mobs/Mob.hpp"
+#include "FollowCamera.hpp"
 
 void PlayerInputComponent::update(Screen* screen) {
+	lastScreen = screen;
+
 	InputHandler& handler = screen->getInputHandler();
+	std::shared_ptr<FollowCamera> camera = std::static_pointer_cast<FollowCamera>(screen->getCamera());
 	std::shared_ptr<Mob> mob = lockParent()->getComponent<Mob>(UPDATE_COMPONENT_NAME);
 	std::shared_ptr<MobState> state = mob->getState();
 	std::shared_ptr<PhysicsComponent> physics = mob->getPhysics();
 	std::shared_ptr<PhysicsComponentManager> world = mob->getPhysicsWorld(screen);
 
 	glm::vec3 newVelocity(0.0, 0.0, 0.0);
-	glm::vec3 focalXz = mob->getFocalPoint();
+	glm::vec3 focalXz = camera->getFocalPoint();
 	focalXz.y = physics->getTranslation().y;
 	glm::vec3 forward = glm::normalize(physics->getTranslation() - focalXz);
 	glm::vec3 side = glm::cross(forward, glm::vec3(0.0, 1.0, 0.0));
@@ -86,10 +90,10 @@ bool PlayerInputComponent::onEvent(const InputHandler* handler, const std::share
 		std::shared_ptr<const KeyEvent> keyEvent = std::static_pointer_cast<const KeyEvent>(event);
 
 		if (keyEvent->action == KeyAction::PRESS) {
-			std::shared_ptr<Mob> mob = lockParent()->getComponent<Mob>(UPDATE_COMPONENT_NAME);
+			std::shared_ptr<FollowCamera> camera = std::static_pointer_cast<FollowCamera>(lastScreen->getCamera());
 
 			switch (keyEvent->key) {
-				case Key::LEFT_ALT: mob->resetFocalPoint(); return true;
+				case Key::LEFT_ALT: camera->resetFocalPoint(); return true;
 				default: break;
 			}
 		}

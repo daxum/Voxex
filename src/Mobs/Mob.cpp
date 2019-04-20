@@ -63,10 +63,6 @@ void Mob::setTarget(PhysicsComponent* comp) {
 	}
 }
 
-void Mob::resetFocalPoint() {
-	focalPoint = getPhysics()->getTranslation() - focalDistance * glm::vec3(glm::mat4_cast(getState()->rotation) * glm::vec4(0.0, 0.0, -1.0, 0.0));
-}
-
 void Mob::update(Screen* screen) {
 	std::shared_ptr<MobState> state = getState();
 	std::shared_ptr<PhysicsComponentManager> world = getPhysicsWorld(screen);
@@ -107,19 +103,9 @@ void Mob::update(Screen* screen) {
 
 	triedMove = false;
 
-	if (!target.lock()) {
-		//Update focal point based on object movement
-		glm::vec3 focalVec = pos - focalPoint;
-		focalVec.y = 0.0;
-		focalPoint = pos - glm::normalize(focalVec) * focalDistance;
-	}
-	else {
-		//Update focal point based on targeted object
-		glm::vec3 targetPos = target.lock()->getComponent<PhysicsComponent>(PHYSICS_COMPONENT_NAME)->getTranslation();
-
-		focalPoint = pos - focalDistance * glm::normalize(targetPos - pos);
-
-		//Also update rotation to face targeted object
+	//If targeting an object, turn to face it.
+	if (target.lock()) {
+		glm::vec3 targetPos = target.lock()->getComponent<Mob>(UPDATE_COMPONENT_NAME)->getTarget()->getTranslation();
 		state->rotation = glm::conjugate(glm::quat(glm::lookAt(pos, targetPos, glm::vec3(0.0, 1.0, 0.0))));
 	}
 

@@ -279,26 +279,7 @@ for (size_t val = 0; val < chunks.size(); val++) {
 	std::shared_ptr<Object> player = Adventurer::create();
 
 	world->addObject(player);
-
-	/*constexpr float dist = 1800.0f;
-	constexpr float center = 0.0f;
-	constexpr float height = 200.0f;
-
-	const std::vector<std::pair<glm::vec3, glm::quat>> cameraAnimation = {
-		{{-dist + center, height, -center}, {1.0, 0.0, 0.0, 0.0}},
-		{{center, height, dist - center}, {1.0, 0.0, 0.0, 0.0}},
-		{{dist + center, height, -center}, {1.0, 0.0, 0.0, 0.0}},
-		{{center, height, -dist - center}, {1.0, 0.0, 0.0, 0.0}},
-		{{-dist + center, height, -center}, {1.0, 0.0, 0.0, 0.0}},
-		{{center, height, dist - center}, {1.0, 0.0, 0.0, 0.0}},
-		{{dist + center, height, -center}, {1.0, 0.0, 0.0, 0.0}}
-	};
-
-	//world->setCamera(std::make_shared<AnimatedCamera>(cameraAnimation, 2000));
-	std::shared_ptr<SquareCamera> camera = std::make_shared<SquareCamera>();
-	camera->setTarget(player);
-	world->setCamera(camera);*/
-	world->setCamera(std::make_shared<FollowCamera>(player, world.get()));
+	world->setCamera(std::make_shared<FollowCamera>(player));
 
 	display.pushScreen(world);
 }
