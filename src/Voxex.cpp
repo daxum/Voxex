@@ -30,7 +30,9 @@
 #include "AnimatedCamera.hpp"
 #include "Names.hpp"
 #include "DefaultCamera.hpp"
-#include "ControlledAI.hpp"
+#include "Mobs/Adventurer.hpp"
+#include "Mobs/BoxMonster.hpp"
+#include "FollowCamera.hpp"
 #include "SquareCamera.hpp"
 
 namespace {
@@ -187,6 +189,7 @@ void Voxex::loadScreens(DisplayEngine& display) {
 	world->addComponentManager(std::make_shared<RenderComponentManager>());
 	world->addComponentManager(std::make_shared<PhysicsComponentManager>());
 	world->addComponentManager(std::make_shared<AIComponentManager>());
+	world->addComponentManager(std::make_shared<UpdateComponentManager>());
 
 	std::vector<std::shared_ptr<Chunk>> chunks;
 	std::mutex chunkLock;
@@ -205,7 +208,7 @@ void Voxex::loadScreens(DisplayEngine& display) {
 		size_t k = val % maxK;
 
 		double start = ExMath::getTimeMillis();
-		std::shared_ptr<Chunk> chunk = genChunk(Pos_t{256*i-256*(maxI/2), 256*j-256*(maxJ/2), 256*k-256*(maxK/2)});
+		std::shared_ptr<Chunk> chunk = worldGenChunk(Pos_t{256*i-256*(maxI/2), 256*j-256*(maxJ/2), 256*k-256*(maxK/2)});
 		double end = ExMath::getTimeMillis();
 
 		std::cout << "Generated chunk " << val << " in " << end - start << "ms\n";
@@ -271,20 +274,15 @@ for (size_t val = 0; val < chunks.size(); val++) {
 	//Yes, I know the correct term
 	std::cout << "Chunks using around " << (totalMemUsage >> 10) << " kilobytes in total\n";
 
-	PhysicsInfo playerPhysics = {
-		.shape = PhysicsShape::SPHERE,
-		.box = Aabb<float>({-1.0, -1.0, -1.0}, {1.0, 1.0, 1.0}),
-		.pos = glm::vec3(0.0, 1000.0, 0.0),
-		.mass = 1.0f,
-	};
+	for (size_t i = 0; i < 10; i++) {
+		world->addObject(BoxMonster::create({0.0, 300.0 + i + 0.5, 0.0}));
+	}
 
-	std::shared_ptr<Object> player = std::make_shared<Object>();
-	player->addComponent(std::make_shared<PhysicsComponent>(std::make_shared<PhysicsObject>(playerPhysics)));
-	player->addComponent(std::make_shared<ControlledAI>());
+	std::shared_ptr<Object> player = Adventurer::create();
 
 	world->addObject(player);
 
-	constexpr float dist = 1800.0f;
+	/*constexpr float dist = 1800.0f;
 	constexpr float center = 0.0f;
 	constexpr float height = 200.0f;
 
@@ -301,7 +299,8 @@ for (size_t val = 0; val < chunks.size(); val++) {
 	//world->setCamera(std::make_shared<AnimatedCamera>(cameraAnimation, 2000));
 	std::shared_ptr<SquareCamera> camera = std::make_shared<SquareCamera>();
 	camera->setTarget(player);
-	world->setCamera(camera);
+	world->setCamera(camera);*/
+	world->setCamera(std::make_shared<FollowCamera>(player, world.get()));
 
 	display.pushScreen(world);
 }

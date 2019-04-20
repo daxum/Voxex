@@ -18,6 +18,9 @@ add_executable(voxex
 	SquareCamera.cpp
 	ControlledAI.cpp
 	ChunkBuilder.cpp
+	Mobs/Adventurer.cpp
+	Mobs/Mob.cpp
+	PlayerInputComponent.cpp
 )
 
 set_target_properties(voxex PROPERTIES
