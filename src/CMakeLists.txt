@@ -15,8 +15,6 @@ add_executable(voxex
 	Chunk.cpp
 	Voxex.cpp
 	Perlin.cpp
-	SquareCamera.cpp
-	ControlledAI.cpp
 	ChunkBuilder.cpp
 	Mobs/Adventurer.cpp
 	Mobs/Mob.cpp

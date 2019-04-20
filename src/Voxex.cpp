@@ -29,11 +29,9 @@
 #include "ScreenComponents.hpp"
 #include "AnimatedCamera.hpp"
 #include "Names.hpp"
-#include "DefaultCamera.hpp"
 #include "Mobs/Adventurer.hpp"
 #include "Mobs/BoxMonster.hpp"
 #include "FollowCamera.hpp"
-#include "SquareCamera.hpp"
 
 namespace {
 #pragma GCC diagnostic push
