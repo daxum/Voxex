@@ -182,28 +182,6 @@ size_t RegionTree::getMemUsage() const {
 	return mem;
 }
 
-void RegionTree::trySplitTree() {
-	//Don't split more than once, and don't go beyond min length
-	if (children.size() == 0 && box.xLength() > 1) {
-		std::array<Aabb<uint8_t>, 8> childBoxes = box.split();
-
-		for (Aabb<uint8_t> childBox : childBoxes) {
-			//Internal regions are stored as blocks, not bounding boxes, so
-			//we have to make sure two children can't contain the same region
-			if (childBox.min.x != 0) childBox.min.x++;
-			if (childBox.min.y != 0) childBox.min.y++;
-			if (childBox.min.z != 0) childBox.min.z++;
-
-			children.emplace_back(childBox);
-		}
-
-		//Try to distribute boxes among children
-		for (RegionTree& child : children) {
-			child.addRegions(regions);
-		}
-	}
-}
-
 void RegionTree::fillMap(BlockMap& map) const {
 	for (const InternalRegion& reg : regions) {
 		map.addRegionFill(reg);
