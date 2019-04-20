@@ -31,26 +31,18 @@ struct InternalRegion {
 };
 
 struct RegionFace {
-	//Stores the normal data - 0:north, 1:east, 2:south, 3:west, 4:up, 5:down.
-	//Upper 2 bits store the unused axis. Don't use directly, see functions
-	//below.
-	uint8_t normalAxis;
-	//Stores the coordinate for the third, fixed, axis.
-	uint16_t fixedCoord;
+	//Stores the fixed coordinate in the lower 9 bits. The next 3 bits
+	//store the normal data - 0:north, 1:east, 2:south, 3:west, 4:up, 5:down.
+	uint16_t normFixed;
 	//Stores the minimum and maximum coordinates
 	//in the two used axis.
 	std::array<uint16_t, 2> min;
 	std::array<uint16_t, 2> max;
 	//Stores the type of region this face is for.
 	uint16_t type;
-	//Area covered by other faces.
-	uint32_t coveredArea;
-	//Total area - only really present for alignment.
-	uint32_t totalArea;
 
-	uint8_t getNormal() const { return normalAxis & 0x3F; }
-	uint8_t getUnusedAxis() const { return (normalAxis & 0xC0) >> 6; }
-	bool fullyCovered() const { return coveredArea >= totalArea; }
+	uint16_t getNormal() const { return normFixed >> 9; }
+	uint16_t getFixedCoord() const { return normFixed & 0x1FF; }
 };
 
 inline std::ostream& operator<<(std::ostream& out, const RegionFace& face) {
@@ -60,17 +52,17 @@ inline std::ostream& operator<<(std::ostream& out, const RegionFace& face) {
 		//Z
 		case 0:
 		case 2:
-			out << face.min.at(0) << ", " << face.min.at(1) << ", " << face.fixedCoord << " | " << face.max.at(0) << ", " << face.max.at(1) << ", " << face.fixedCoord;
+			out << face.min.at(0) << ", " << face.min.at(1) << ", " << face.getFixedCoord() << " | " << face.max.at(0) << ", " << face.max.at(1) << ", " << face.getFixedCoord();
 			break;
 		//X
 		case 1:
 		case 3:
-			out << face.fixedCoord << ", " << face.min.at(0) << ", " << face.min.at(1) << " | " << face.fixedCoord << ", " << face.max.at(0) << ", " << face.max.at(1);
+			out << face.getFixedCoord() << ", " << face.min.at(0) << ", " << face.min.at(1) << " | " << face.getFixedCoord() << ", " << face.max.at(0) << ", " << face.max.at(1);
 			break;
 		//Y
 		case 4:
 		case 5:
-			out << face.min.at(0) << ", " << face.fixedCoord << ", " << face.min.at(1) << " | " << face.max.at(0) << ", " << face.fixedCoord << ", " << face.max.at(1);
+			out << face.min.at(0) << ", " << face.getFixedCoord() << ", " << face.min.at(1) << " | " << face.max.at(0) << ", " << face.getFixedCoord() << ", " << face.max.at(1);
 			break;
 		default: out << "Invalid position!";
 	}

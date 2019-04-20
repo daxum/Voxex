@@ -233,30 +233,22 @@ void RegionTree::generateFaces(const BlockMap& map, std::vector<RegionFace>& fac
 }
 
 std::array<RegionFace, 6> RegionTree::genRegionFaces(const InternalRegion& region) const {
-	//Expand region box into bounding box
-	Aabb<uint32_t> fullRegionBox = region.box;
-	fullRegionBox.max += Aabb<uint32_t>::vec_t(1, 1, 1);
-
-	uint32_t xArea = fullRegionBox.yLength() * fullRegionBox.zLength();
-	uint32_t yArea = fullRegionBox.xLength() * fullRegionBox.zLength();
-	uint32_t zArea = fullRegionBox.xLength() * fullRegionBox.yLength();
-
 	//Don't bother to use the expanded box here, it would only require more casting
 	Aabb<uint16_t>::vec_t min = region.box.min;
 	Aabb<uint16_t>::vec_t max(region.box.max.x + 1, region.box.max.y + 1, region.box.max.z + 1);
 
 	return {
 		//north
-		RegionFace{0x80, min.z, {min.x, min.y}, {max.x, max.y}, region.type, 0, zArea},
+		RegionFace{min.z, {min.x, min.y}, {max.x, max.y}, region.type},
 		//east
-		RegionFace{0x01, max.x, {min.y, min.z}, {max.y, max.z}, region.type, 0, xArea},
+		RegionFace{(uint16_t) (0x200 | max.x), {min.y, min.z}, {max.y, max.z}, region.type},
 		//south
-		RegionFace{0x82, max.z, {min.x, min.y}, {max.x, max.y}, region.type, 0, zArea},
+		RegionFace{(uint16_t) (0x400 | max.z), {min.x, min.y}, {max.x, max.y}, region.type},
 		//west
-		RegionFace{0x03, min.x, {min.y, min.z}, {max.y, max.z}, region.type, 0, xArea},
+		RegionFace{(uint16_t) (0x600 | min.x), {min.y, min.z}, {max.y, max.z}, region.type},
 		//up
-		RegionFace{0x44, max.y, {min.x, min.z}, {max.x, max.z}, region.type, 0, yArea},
+		RegionFace{(uint16_t) (0x800 | max.y), {min.x, min.z}, {max.x, max.z}, region.type},
 		//down
-		RegionFace{0x45, min.y, {min.x, min.z}, {max.x, max.z}, region.type, 0, yArea}
+		RegionFace{(uint16_t) (0xA00 | min.y), {min.x, min.z}, {max.x, max.z}, region.type}
 	};
 }

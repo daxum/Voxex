@@ -85,7 +85,7 @@ public:
 	 */
 	bool isFaceVisible(const RegionFace& face) const {
 		Aabb<uint64_t> mapBox(posOffset, posOffset + mapDims);
-		uint64_t fixed = face.fixedCoord;
+		uint64_t fixed = face.getFixedCoord();
 		uint64_t normal = face.getNormal();
 		bool visible = false;
 

@@ -44,7 +44,7 @@ ChunkMeshData Chunk::generateModel() {
 
 		std::array<uint64_t, 2> min = {face.min.at(0), face.min.at(1)};
 		std::array<uint64_t, 2> max = {face.max.at(0), face.max.at(1)};
-		uint64_t fixedCoord = face.fixedCoord;
+		uint64_t fixedCoord = face.getFixedCoord();
 
 		switch (face.getNormal()) {
 			//Facing -z
