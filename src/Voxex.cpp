@@ -65,8 +65,8 @@ namespace {
 
 		//Add layer of dirt and stone for terrain
 		else if (chunkBox.max.y <= 256 && chunkBox.min.y >= 0) {
-			for (int64_t i = pos.x; i < chunkBox.max.x-1; i++) {
-				for (int64_t j = pos.z; j < chunkBox.max.z-1; j++) {
+			for (int64_t i = pos.x; i < chunkBox.max.x; i++) {
+				for (int64_t j = pos.z; j < chunkBox.max.z; j++) {
 					float heightPercent = perlin2D({i, j});
 					int64_t height = (int64_t) (heightPercent * 255) + pos.y;
 					int64_t stoneHeight = pos.y + height / 2;
@@ -151,7 +151,7 @@ void Voxex::createRenderObjects(std::shared_ptr<RenderInitializer> renderInit) {
 		{VERTEX_ELEMENT_POSITION, VertexElementType::VEC3},
 		{VERTEX_ELEMENT_PACKED_NORM_COLOR, VertexElementType::UINT32}},
 		BufferUsage::DEDICATED_SINGLE,
-		512'000'000
+		1'073'741'824
 	});
 
 	renderInit->addUniformSet(SCREEN_SET, UniformSet{
@@ -186,9 +186,9 @@ void Voxex::loadScreens(DisplayEngine& display) {
 	std::vector<std::shared_ptr<Chunk>> chunks;
 	std::mutex chunkLock;
 
-	constexpr size_t maxI = 1;
-	constexpr size_t maxJ = 1;
-	constexpr size_t maxK = 1;
+	constexpr size_t maxI = 4;
+	constexpr size_t maxJ = 4;
+	constexpr size_t maxK = 4;
 	constexpr size_t maxChunks = maxI * maxJ * maxK;
 
 	std::atomic<double> genTime(0.0);
@@ -235,8 +235,12 @@ void Voxex::loadScreens(DisplayEngine& display) {
 //TODO: Multithread face generation only - can't upload off the main thread in opengl
 for (size_t val = 0; val < chunks.size(); val++) {
 //	Engine::parallelFor(0, chunks.size(), [&](size_t val) {
+		if (chunks.at(val)->regionCount() == 0) {
+			continue;
+		}
+
 		auto data = chunks.at(val)->generateModel();
-		writeObj(data.model.name, data.mesh);
+		//writeObj(data.model.name, data.mesh);
 
 		std::shared_ptr<Object> chunkObject = std::make_shared<Object>();
 
@@ -262,7 +266,7 @@ for (size_t val = 0; val < chunks.size(); val++) {
 	//Yes, I know the correct term
 	std::cout << "Chunks using around " << (totalMemUsage >> 10) << " kilobytes in total\n";
 
-	constexpr float dist = 1000.0f;
+	constexpr float dist = 1800.0f;
 	constexpr float center = 0.0f;
 	constexpr float height = 200.0f;
 
