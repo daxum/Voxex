@@ -19,6 +19,7 @@
 #pragma once
 
 #include <memory>
+#include <unordered_map>
 
 #include "Chunk.hpp"
 
@@ -45,9 +46,11 @@ public:
 	 * Generates the chunk.
 	 * @return The generated chunk.
 	 */
-	std::shared_ptr<Chunk> genChunk() const { return std::make_shared<Chunk>(box, regions); }
+	std::shared_ptr<Chunk> genChunk() const;
 
 private:
-	std::vector<InternalRegion> regions;
+	//Sorts regions by type, for hopefully faster chunk optimization.
+	std::unordered_map<uint16_t, std::vector<InternalRegion>> sortedRegions;
+	//Chunk bounding box.
 	Aabb<int64_t> box;
 };

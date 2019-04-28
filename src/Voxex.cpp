@@ -110,7 +110,7 @@ namespace {
 			float adjThreshold = ExMath::clamp(cutoffScale * (1.0f / (256.0f - box.xLength())) + fillThreshold, 0.0f, 0.95f);
 
 			if (percentFull >= adjThreshold) {
-				uint16_t type = 5;//(uint16_t)ExMath::randomInt(0, colors.size() - 1);
+				uint16_t type = 5;//(uint16_t)ExMath::randomInt(0, 19);
 				chunk.addRegion(Region{type, box});
 			}
 			else if (box.xLength() > minEdge && percentFull > discardThreshold) {
