@@ -87,8 +87,6 @@ namespace {
 #pragma GCC diagnostic pop
 }
 
-const UniformSet Voxex::chunkSet = UniformSet{UniformSetType::MODEL_DYNAMIC, 1024, {}};
-
 //TODO: This stuff goes elsewhere, most likely in its own class
 namespace {
 	std::shared_ptr<Chunk> genChunk(const Pos_t& pos) {
@@ -148,22 +146,30 @@ namespace {
 
 }
 
-void Voxex::createRenderObjects(std::shared_ptr<RenderInitializer> renderInit) {
-	renderInit->createBuffer(CHUNK_BUFFER, VertexBufferInfo{{
-		{VERTEX_ELEMENT_POSITION, VertexElementType::VEC3},
-		{VERTEX_ELEMENT_PACKED_NORM_COLOR, VertexElementType::UINT32}},
-		BufferUsage::DEDICATED_SINGLE,
-		1'073'741'824
-	});
+void Voxex::createRenderObjects(RenderInitializer& renderInit) {
+	const size_t chunkBufferSize = 1'073'741'824;
 
-	renderInit->addUniformSet(SCREEN_SET, UniformSet{
-		UniformSetType::PER_SCREEN,
-		1,
+	renderInit.createBuffer(CHUNK_VERTEX_BUFFER, chunkBufferSize, BufferType::VERTEX, BufferStorage::DEVICE);
+	renderInit.createBuffer(CHUNK_INDEX_BUFFER, chunkBufferSize / 6, BufferType::INDEX, BufferStorage::DEVICE);
+
+	renderInit.addVertexFormat(CHUNK_FORMAT, VertexFormat({
+		{VERTEX_ELEMENT_POSITION, VertexFormat::ElementType::VEC3},
+		{VERTEX_ELEMENT_PACKED_NORM_COLOR, VertexFormat::ElementType::UINT32}
+	}));
+
+	renderInit.addUniformSet(SCREEN_SET, UniformSetType::PER_SCREEN, 1,
 		{{UniformType::MAT4, "projection", UniformProviderType::CAMERA_PROJECTION, USE_VERTEX_SHADER},
 		{UniformType::MAT4, "view", UniformProviderType::CAMERA_VIEW, USE_VERTEX_SHADER}}
-	});
+	);
 
-	renderInit->addUniformSet(CHUNK_SET, chunkSet);
+	renderInit.addUniformSet(CHUNK_SET, UniformSetType::MATERIAL, 1, {});
+}
+
+void Voxex::loadModels(ModelLoader& loader) {
+	//Chunks don't have anything in their material at the moment, so skip standard loading
+	//This will be fixed later!
+	const UniformSet& chunkSet = Engine::instance->getModelManager().getMemoryManager()->getUniformSet(CHUNK_SET);
+	Engine::instance->getModelManager().addMaterial(CHUNK_MAT, Material(CHUNK_MAT, CHUNK_SHADER, CHUNK_SET, chunkSet));
 }
 
 void Voxex::loadShaders(std::shared_ptr<ShaderLoader> loader) {
@@ -171,9 +177,9 @@ void Voxex::loadShaders(std::shared_ptr<ShaderLoader> loader) {
 		.vertex = shaderFiles->chunk.vertex,
 		.fragment = shaderFiles->chunk.fragment,
 		.pass = RenderPass::OPAQUE,
-		.buffer = CHUNK_BUFFER,
+		.format = CHUNK_FORMAT,
 		.uniformSets = {SCREEN_SET, CHUNK_SET},
-		.pushConstants = {{{UniformType::MAT4, "modelView", UniformProviderType::OBJECT_MODEL_VIEW, USE_VERTEX_SHADER}}},
+		.pushConstants = {{UniformType::MAT4, "modelView", UniformProviderType::OBJECT_MODEL_VIEW, USE_VERTEX_SHADER}},
 	};
 
 	loader->loadShader(CHUNK_SHADER, chunkInfo);
@@ -241,17 +247,16 @@ for (size_t val = 0; val < chunks.size(); val++) {
 			continue;
 		}
 
-		auto data = chunks.at(val)->generateModel();
+		auto data = chunks.at(val)->generateMesh();
 		//writeObj(data.model.name, data.mesh);
 
 		std::shared_ptr<Object> chunkObject = std::make_shared<Object>();
 
 		{
 			std::lock_guard<std::mutex> guard(chunkLock);
-			Engine::instance->getModelManager().addMesh(data.name, std::move(data.mesh));
-			Engine::instance->getModelManager().addModel(data.name, std::move(data.model));
+			Engine::instance->getModelManager().addMesh(data.name, std::move(data.mesh), false);
 
-			chunkObject->addComponent(std::make_shared<RenderComponent>(data.name));
+			chunkObject->addComponent<RenderComponent>(CHUNK_MAT, data.name);
 			glm::vec3 chunkPos = chunks.at(val)->getBox().getCenter();
 			chunkPos.z = -chunkPos.z;
 			chunkObject->addComponent(std::make_shared<PhysicsComponent>(std::make_shared<PhysicsObject>(data.name, chunkPos)));

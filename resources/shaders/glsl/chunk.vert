@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
 
-#version 410 core
+#version 430 core
 
 layout (location = 0) in vec3 posIn;
 layout (location = 1) in uint normColPack;
@@ -26,8 +26,11 @@ out vec3 color;
 out vec3 normal;
 out vec3 lightDir;
 
-uniform mat4 view;
-uniform mat4 projection;
+layout(binding = 0, std140) uniform ScreenData {
+	mat4 projection;
+	mat4 view;
+} screen;
+
 uniform mat4 modelView;
 
 const vec4 normals[6] = vec4[6](
@@ -66,9 +69,9 @@ void main() {
 	uint normalIndx = normColPack >> 16u;
 	uint colorIndx = normColPack & 0xFFFF;
 
-	gl_Position = projection * modelView * vec4(posIn, 1.0);
+	gl_Position = screen.projection * modelView * vec4(posIn, 1.0);
 	normal = vec3(modelView * normals[normalIndx]);
 	color = colors[colorIndx];
-	lightDir = (view * vec4(normalize(vec3(-1.0, -1.0, 1.0)), 0.0)).xyz;
+	lightDir = (screen.view * vec4(normalize(vec3(-1.0, -1.0, 1.0)), 0.0)).xyz;
 	pos = vec3(modelView * vec4(posIn, 1.0));
 }

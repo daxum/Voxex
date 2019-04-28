@@ -21,7 +21,7 @@
 #include "Names.hpp"
 #include "Voxex.hpp"
 
-ChunkMeshData Chunk::generateModel() {
+ChunkMeshData Chunk::generateMesh() {
 	double start = ExMath::getTimeMillis();
 
 	std::vector<RegionFace> faces = regions.genQuads();
@@ -34,8 +34,7 @@ ChunkMeshData Chunk::generateModel() {
 	std::vector<Vertex> vertices;
 	std::vector<uint32_t> indices;
 
-	//TODO: find better way to get this sort of stuff
-	VertexBuffer& buffer = Engine::instance->getModelManager().getMemoryManager()->getBuffer(CHUNK_BUFFER);
+	const VertexFormat* format = Engine::instance->getModelManager().getFormat(CHUNK_FORMAT);
 
 	for (const RegionFace& face : faces) {
 		size_t baseIndex = vertices.size();
@@ -97,7 +96,7 @@ ChunkMeshData Chunk::generateModel() {
 			positions.at(i) -= glm::vec3(128, 128, 128);
 			positions.at(i).z = -positions.at(i).z;
 
-			Vertex vert = buffer.getVertex();
+			Vertex vert(format);
 			vert.setVec3(VERTEX_ELEMENT_POSITION, positions.at(i));
 
 			uint32_t normal = face.getNormal();
@@ -117,16 +116,18 @@ ChunkMeshData Chunk::generateModel() {
 
 	std::string modelName = "Chunk_" + std::to_string(box.min.x) + "_" + std::to_string(box.min.y) + "_" + std::to_string(box.min.z);
 
+	Mesh::BufferInfo buffers = {
+		.vertex = Engine::instance->getModelManager().getMemoryManager()->getBuffer(CHUNK_VERTEX_BUFFER),
+		.index = Engine::instance->getModelManager().getMemoryManager()->getBuffer(CHUNK_INDEX_BUFFER),
+		.vertexName = CHUNK_VERTEX_BUFFER,
+		.indexName = CHUNK_INDEX_BUFFER,
+	};
+
+	float radius = std::sqrt(std::sqrt(255*255 + 255*255)*std::sqrt(255*255 + 255*255) + 255*255);
+
 	ChunkMeshData out = {
-		modelName,
-		Mesh(CHUNK_BUFFER, {
-			{VERTEX_ELEMENT_POSITION, VertexElementType::VEC3},
-			{VERTEX_ELEMENT_PACKED_NORM_COLOR, VertexElementType::UINT32}},
-			vertices,
-			indices,
-			box,
-			std::sqrt(std::sqrt(255*255 + 255*255)*std::sqrt(255*255 + 255*255) + 255*255)),
-		Model(modelName, modelName, CHUNK_SHADER, CHUNK_SET, Voxex::chunkSet)
+		.name = modelName,
+		.mesh = Mesh(buffers, format, vertices, indices, box, radius),
 	};
 
 	return out;
