@@ -4,9 +4,6 @@
 #SGIS - A simple game involving squares
 #Copyright (C) 2017
 #
-#Forked and modified 2018/12/27
-#Forked again and modified some more 2019/01/26
-#
 #This program is free software: you can redistribute it and/or modify
 #it under the terms of the GNU Lesser General Public License as published by
 #the Free Software Foundation, either version 3 of the License, or
@@ -26,36 +23,53 @@ BUILD=0
 SETUP=0
 MODE="none"
 
-SPIRV_DIR="resources/shaders/spirv"
+#Set to !0 to disable spirv compilation
+NO_SPIRV=0
+#Location of files to be compiled into spirv, relative to the build folder
+SPIRV_SRC_DIR="shaders/spirv"
+#Location compiled spirv files will be placed, also relative to the build folder
+SPIRV_DST_DIR="shaders/spirv"
+#Name of the created executable
 EXEC_NAME="voxex"
+#Name of the directory the engine is in
 ENGINE_DIR="SGIS-Engine"
-ENGINE_UPSTREAM="https://github.com/daxum/${ENGINE_DIR}.git"
+#Upstream engine repository
+ENGINE_UPSTREAM="https://github.com/daxum/SGIS-Engine.git"
 
 function buildShader() {
-	glslangValidator -V -o $1.spv raw/$1
+	glslangValidator -V -o ${SPIRV_DST_DIR}/$1.spv ${SPIRV_SRC_DIR}/$1
 
 	if [ $? -ne 0 ]; then
-		echo "Failed to compile shader, aborting!"
+		echo "Failed to compile $1, aborting!"
 		exit 1
 	fi
 }
 
 function build {
 	if [ $BUILD -eq 1 ]; then
-		#TODO: find way to do with cmake
-		OLD_DIR=$(pwd)
-		cd ../${SPIRV_DIR}
-
-		#spir-v shaders go here
-		#(as "buildShader <shaderName>")
-		buildShader "chunk.vert"
-		buildShader "chunk.frag"
-
-		cd "${OLD_DIR}"
-
 		echo "Building mode \"${MODE}\"..."
 		rm ${EXEC_NAME} > /dev/null 2>&1
 		make -j$(nproc)
+
+		if [ $? -ne 0 ]; then
+			echo "Build failed!"
+			exit 1
+		fi
+
+		#TODO: find way to do with cmake
+
+		if [ ${NO_SPIRV} -eq 0 ]; then
+			echo "Compiling shaders..."
+
+			for shader in ${SPIRV_SRC_DIR}/*; do
+				if [ -f "${shader}" ] && ! [ -z $(echo "${shader}" | grep -v "\.spv$") ]; then
+					shader=${shader##*/}
+					buildShader "${shader}"
+				fi
+			done
+		fi
+
+		echo "Build complete!"
 	fi
 }
 
@@ -76,7 +90,7 @@ for ((i=1;i<=$#;i++)); do
 done;
 
 if [ ${SETUP} -eq 1 ]; then
-	echo "Use upstream engine?"
+	echo "Use upstream engine (will clone to $(pwd)/${ENGINE_DIR})?"
 	select USE_UPSTREAM_ENGINE in "Yes" "No"; do
 		case ${USE_UPSTREAM_ENGINE} in
 			Yes) git clone "${ENGINE_UPSTREAM}"; break;;
