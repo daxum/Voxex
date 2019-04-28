@@ -37,6 +37,8 @@ void ChunkBuilder::addRegion(const Region& reg) {
 		.box = Aabb<uint8_t>(min, max),
 	};
 
+	std::vector<InternalRegion>& regions = sortedRegions[region.type];
+
 	for (size_t i = 0; i < regions.size(); i++) {
 		InternalRegion testReg = regions.at(i);
 
@@ -55,4 +57,15 @@ void ChunkBuilder::addRegion(const Region& reg) {
 	}
 
 	regions.push_back(region);
+}
+
+std::shared_ptr<Chunk> ChunkBuilder::genChunk() const {
+	//Concatenate all region lists
+	std::vector<InternalRegion> regions;
+
+	for (const auto& regs : sortedRegions) {
+		regions.insert(regions.end(), regs.second.begin(), regs.second.end());
+	}
+
+	return std::make_shared<Chunk>(box, regions);
 }

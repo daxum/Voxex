@@ -108,7 +108,7 @@ namespace {
 			float adjThreshold = ExMath::clamp(cutoffScale * (1.0f / (256.0f - box.xLength())) + fillThreshold, 0.0f, 0.95f);
 
 			if (percentFull >= adjThreshold) {
-				uint16_t type = 5;//(uint16_t)ExMath::randomInt(0, colors.size() - 1);
+				uint16_t type = 5;//(uint16_t)ExMath::randomInt(0, 19);
 				chunk.addRegion(Region{type, box});
 			}
 			else if (box.xLength() > minEdge && percentFull > discardThreshold) {
@@ -194,9 +194,9 @@ void Voxex::loadScreens(DisplayEngine& display) {
 	std::vector<std::shared_ptr<Chunk>> chunks;
 	std::mutex chunkLock;
 
-	constexpr size_t maxI = 4;
-	constexpr size_t maxJ = 4;
-	constexpr size_t maxK = 4;
+	constexpr size_t maxI = 1;
+	constexpr size_t maxJ = 1;
+	constexpr size_t maxK = 1;
 	constexpr size_t maxChunks = maxI * maxJ * maxK;
 
 	std::atomic<double> genTime(0.0);
