@@ -20,7 +20,12 @@
 
 //Buffers
 
-const char* const CHUNK_BUFFER = "chnkBfr";
+const char* const CHUNK_VERTEX_BUFFER = "chnkvBfr";
+const char* const CHUNK_INDEX_BUFFER = "chnkiBfr";
+
+//Vertex formats
+
+const char* const CHUNK_FORMAT = "chnkFmt";
 
 //Buffer elements
 
@@ -34,3 +39,7 @@ const char* const CHUNK_SHADER = "chnkSdr";
 
 const char* const CHUNK_SET = "chnkSet";
 const char* const SCREEN_SET = "scrnSet";
+
+//Materials
+
+const char* const CHUNK_MAT = "chnkMat";

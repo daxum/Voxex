@@ -20,7 +20,7 @@
 
 #include "AxisAlignedBB.hpp"
 #include "RegionTree.hpp"
-#include "Model.hpp"
+#include "Models/Mesh.hpp"
 #include "BlockMap.hpp"
 
 typedef Aabb<int64_t>::vec_t Pos_t;
@@ -33,7 +33,6 @@ struct Region {
 struct ChunkMeshData {
 	std::string name;
 	Mesh mesh;
-	Model model;
 };
 
 class Chunk {
@@ -55,7 +54,7 @@ public:
 	 * @param colors The colors for the regions.
 	 * @return The chunk's mesh data.
 	 */
-	ChunkMeshData generateModel();
+	ChunkMeshData generateMesh();
 
 	/**
 	 * Returns the number of regions in the chunk.

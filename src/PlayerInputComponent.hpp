@@ -18,10 +18,12 @@
 
 #pragma once
 
-#include "AIComponent.hpp"
+#include "Components/AIComponent.hpp"
 
 class PlayerInputComponent : public AIComponent{
 public:
+	static const std::string getName() { return AI_COMPONENT_NAME; }
+
 	PlayerInputComponent() : AIComponent(true), setTarget(false), lastScreen(nullptr) {}
 
 	void update(Screen* screen) override;

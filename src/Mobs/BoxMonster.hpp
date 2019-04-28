@@ -18,7 +18,6 @@
 
 #pragma once
 
-#include "UpdateComponent.hpp"
 #include "ExtraMath.hpp"
 
 class BoxMonster : public Mob {

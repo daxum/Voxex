@@ -17,8 +17,8 @@
  ******************************************************************************/
 
 #include "PlayerInputComponent.hpp"
-#include "PhysicsComponent.hpp"
-#include "PhysicsComponentManager.hpp"
+#include "Components/PhysicsComponent.hpp"
+#include "Components/PhysicsComponentManager.hpp"
 #include "Mobs/MobState.hpp"
 #include "Mobs/Mob.hpp"
 #include "FollowCamera.hpp"

@@ -20,9 +20,9 @@
 
 #include <memory>
 
-#include "UpdateComponent.hpp"
+#include "Components/UpdateComponent.hpp"
 #include "MobState.hpp"
-#include "PhysicsComponentManager.hpp"
+#include "Components/PhysicsComponentManager.hpp"
 
 class Mob : public UpdateComponent {
 public:

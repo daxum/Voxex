@@ -25,9 +25,9 @@ public:
 	static constexpr bool USE_VULKAN = false;
 	static const UniformSet chunkSet;
 
-	void createRenderObjects(std::shared_ptr<RenderInitializer> renderInit);
+	void createRenderObjects(RenderInitializer& renderInit);
 	void loadTextures(std::shared_ptr<TextureLoader> loader) {}
-	void loadModels(ModelLoader& loader) {}
+	void loadModels(ModelLoader& loader);
 	void loadShaders(std::shared_ptr<ShaderLoader> loader);
 	void loadScreens(DisplayEngine& display);
 };

@@ -18,6 +18,8 @@
 
 #pragma once
 
+#include <bitset>
+
 #include "Object.hpp"
 
 struct MobStats {
