@@ -263,7 +263,7 @@ for (size_t val = 0; val < chunks.size(); val++) {
 			chunkObject->addComponent<RenderComponent>(CHUNK_MAT, data.name);
 			glm::vec3 chunkPos = chunks.at(val)->getBox().getCenter();
 			chunkPos.z = -chunkPos.z;
-			chunkObject->addComponent(std::make_shared<PhysicsComponent>(std::make_shared<PhysicsObject>(data.name, chunkPos)));
+			chunkObject->addComponent<PhysicsComponent>(std::make_shared<PhysicsObject>(data.name, chunkPos));
 		}
 
 		world->addObject(chunkObject);

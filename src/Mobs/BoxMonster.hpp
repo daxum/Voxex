@@ -43,8 +43,8 @@ public:
 		};
 
 		std::shared_ptr<Object> box = std::make_shared<Object>();
-		box->addComponent(std::make_shared<BoxMonster>());
-		box->addComponent(std::make_shared<PhysicsComponent>(std::make_shared<PhysicsObject>(boxPhysics)));
+		box->addComponent<BoxMonster>();
+		box->addComponent<PhysicsComponent>(std::make_shared<PhysicsObject>(boxPhysics));
 
 		return box;
 	}

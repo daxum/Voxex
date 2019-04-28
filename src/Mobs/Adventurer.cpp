@@ -99,11 +99,11 @@ std::shared_ptr<Object> Adventurer::create() {
 		.jumpStrength = 4.5f,
 	};
 
-	adventurer->setState(std::make_shared<MobState>(state));
+	adventurer->setState<MobState>(state);
 
 	//TODO: Control type of input - controlled or AI
-	adventurer->addComponent(std::make_shared<PlayerInputComponent>());
-	adventurer->addComponent(std::make_shared<Adventurer>());
+	adventurer->addComponent<PlayerInputComponent>();
+	adventurer->addComponent<Adventurer>();
 
 	return adventurer;
 }
