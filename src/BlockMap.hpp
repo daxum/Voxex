@@ -31,7 +31,7 @@ public:
 	 */
 	BlockMap(Aabb<uint64_t>::vec_t posOffset = {0, 0, 0}, Aabb<uint64_t>::vec_t mapDims = {256, 256, 256}) :
 		map(mapDims.x * mapDims.y * mapDims.z, false),
-		posOffset(posOffset),
+		mapBox(posOffset, posOffset + mapDims),
 		mapDims(mapDims) {}
 
 	/**
@@ -57,7 +57,6 @@ public:
 	 * @param region The region to set as filled.
 	 */
 	void addRegionFill(const InternalRegion& region) {
-		Aabb<uint64_t> mapBox(posOffset, posOffset + mapDims);
 		Aabb<uint64_t> regBox(region.box);
 		regBox.max += Aabb<uint64_t>::vec_t(1, 1, 1);
 
@@ -68,10 +67,16 @@ public:
 		Aabb<uint64_t>::vec_t min = glm::max(mapBox.min, regBox.min);
 		Aabb<uint64_t>::vec_t max = glm::min(mapBox.max, regBox.max);
 
-		for (uint64_t x = min.x; x < max.x; x++) {
-			for (uint64_t y = min.y; y < max.y; y++) {
+		uint64_t xInc = mapDims.y * mapDims.z;
+		uint64_t xMin = min.x * mapDims.y * mapDims.z;
+		uint64_t xMax = max.x * mapDims.y * mapDims.z;
+		uint64_t yMin = min.y * mapDims.z;
+		uint64_t yMax = max.y * mapDims.z;
+
+		for (uint64_t x = xMin; x < xMax; x += xInc) {
+			for (uint64_t y = yMin; y < yMax; y += mapDims.z) {
 				for (uint64_t z = min.z; z < max.z; z++) {
-					setBlockFill(x, y, z);
+					map.at(x + y + z) = true;
 				}
 			}
 		}
@@ -84,7 +89,6 @@ public:
 	 * @return Whether the face is visible.
 	 */
 	bool isFaceVisible(const RegionFace& face) const {
-		Aabb<uint64_t> mapBox(posOffset, posOffset + mapDims);
 		uint64_t fixed = face.getFixedCoord();
 		uint64_t normal = face.getNormal();
 		bool visible = false;
@@ -153,8 +157,8 @@ public:
 private:
 	//Stores which blocks are filled in the chunk.
 	std::vector<bool> map;
-	//Offset for the start of the map.
-	Aabb<uint64_t>::vec_t posOffset;
-	//Size of the map.
+	//Bounding box for the start of the map.
+	Aabb<uint64_t> mapBox;
+	//Size of the map, same as mapBox.max - mapBox.min.
 	Aabb<uint64_t>::vec_t mapDims;
 };
