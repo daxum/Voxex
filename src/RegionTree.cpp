@@ -168,12 +168,18 @@ size_t RegionTree::size() const {
 }
 
 std::vector<RegionFace> RegionTree::genQuads() const {
-	BlockMap map(box.min, Aabb<uint64_t>::vec_t(box.max) + Aabb<uint64_t>::vec_t(1, 1, 1));
+	BlockMap map;
 
+	double fillStart = ExMath::getTimeMillis();
 	fillMap(map);
+	double fillEnd = ExMath::getTimeMillis();
 
 	std::vector<RegionFace> faces;
+	double genStart = ExMath::getTimeMillis();
 	generateFaces(map, faces);
+	double genEnd = ExMath::getTimeMillis();
+
+	std::cout << "Fill: " << (fillEnd - fillStart) << ", Gen: " << (genEnd - genStart) << "\n";
 
 	return faces;
 }

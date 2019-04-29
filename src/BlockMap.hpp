@@ -18,21 +18,20 @@
 
 #pragma once
 
-#include <vector>
+#include <bitset>
 
 #include "RegionTree.hpp"
 
 class BlockMap {
 public:
+	static constexpr size_t length = 256;
+	static constexpr size_t area = length * length;
+	static constexpr size_t volume = area * length;
+
 	/**
 	 * Creates a map for representing the filled areas in a chunk.
-	 * @param posOffset Offset into the chunk to begin the map.
-	 * @param mapDims The size of the map.
 	 */
-	BlockMap(Aabb<uint64_t>::vec_t posOffset = {0, 0, 0}, Aabb<uint64_t>::vec_t mapDims = {256, 256, 256}) :
-		map(mapDims.x * mapDims.y * mapDims.z, false),
-		mapBox(posOffset, posOffset + mapDims),
-		mapDims(mapDims) {}
+	BlockMap() {}
 
 	/**
 	 * Sets the given postion as filled or empty in the map.
@@ -40,7 +39,7 @@ public:
 	 * @param val Whether to set the block as filled or empty.
 	 */
 	void setBlockFill(size_t x, size_t y, size_t z, bool val = true) {
-		map.at(x * mapDims.y * mapDims.z + y * mapDims.z + z) = val;
+		map[x * area + y * length + z] = val;
 	}
 
 	/**
@@ -49,7 +48,7 @@ public:
 	 * @return Whether the given block was filled.
 	 */
 	bool isBlockFilled(size_t x, size_t y, size_t z) const {
-		return map.at(x * mapDims.y * mapDims.z + y * mapDims.z + z);
+		return map[x * area + y * length + z];
 	}
 
 	/**
@@ -60,24 +59,25 @@ public:
 		Aabb<uint64_t> regBox(region.box);
 		regBox.max += Aabb<uint64_t>::vec_t(1, 1, 1);
 
-		if (!mapBox.intersects(regBox)) {
-			return;
-		}
+		Aabb<uint64_t>::vec_t min = regBox.min;
+		Aabb<uint64_t>::vec_t max = regBox.max;
 
-		Aabb<uint64_t>::vec_t min = glm::max(mapBox.min, regBox.min);
-		Aabb<uint64_t>::vec_t max = glm::min(mapBox.max, regBox.max);
+		//It doesn't matter if max underflows, it'll just end up as 0, as it should
+		uint64_t mask1 = regionMask(min.z, max.z, 0, 64);
+		uint64_t mask2 = regionMask(min.z, max.z, 64, 128);
+		uint64_t mask3 = regionMask(min.z, max.z, 128, 192);
+		uint64_t mask4 = regionMask(min.z, max.z, 192, 256);
 
-		uint64_t xInc = mapDims.y * mapDims.z;
-		uint64_t xMin = min.x * mapDims.y * mapDims.z;
-		uint64_t xMax = max.x * mapDims.y * mapDims.z;
-		uint64_t yMin = min.y * mapDims.z;
-		uint64_t yMax = max.y * mapDims.z;
+		for (uint64_t x = min.x; x < max.x; x++) {
+			for (uint64_t y = min.y; y < max.y; y++) {
+				//Hack to get internal data. Need own implementation later to avoid undefined behaviour.
+				uint64_t* mapData = (uint64_t*)&map;
 
-		for (uint64_t x = xMin; x < xMax; x += xInc) {
-			for (uint64_t y = yMin; y < yMax; y += mapDims.z) {
-				for (uint64_t z = min.z; z < max.z; z++) {
-					map.at(x + y + z) = true;
-				}
+				uint64_t baseIndex = (x * area + y * length) / 64;
+				mapData[baseIndex] |= mask1;
+				mapData[baseIndex + 1] |= mask2;
+				mapData[baseIndex + 2] |= mask3;
+				mapData[baseIndex + 3] |= mask4;
 			}
 		}
 	}
@@ -94,29 +94,7 @@ public:
 		bool visible = false;
 
 		//Check if face is actually in the map
-		bool inMap = false;
-		glm::uvec2 minBound(0, 0);
-		glm::uvec2 maxBound(0, 0);
-
-		switch (normal) {
-			//-Z
-			case 0: inMap = fixed > mapBox.min.z; minBound = {mapBox.min.x, mapBox.min.y}; maxBound = {mapBox.max.x, mapBox.max.y}; break;
-			//+X
-			case 1: inMap = fixed < mapBox.max.x; minBound = {mapBox.min.y, mapBox.min.z}; maxBound = {mapBox.max.y, mapBox.max.z}; break;
-			//+Z
-			case 2: inMap = fixed < mapBox.max.z; minBound = {mapBox.min.x, mapBox.min.y}; maxBound = {mapBox.max.x, mapBox.max.y}; break;
-			//-X
-			case 3: inMap = fixed > mapBox.min.x; minBound = {mapBox.min.y, mapBox.min.z}; maxBound = {mapBox.max.y, mapBox.max.z}; break;
-			//+Y
-			case 4: inMap = fixed < mapBox.max.y; minBound = {mapBox.min.x, mapBox.min.z}; maxBound = {mapBox.max.x, mapBox.max.z}; break;
-			//-Y
-			case 5: inMap = fixed > mapBox.min.y; minBound = {mapBox.min.x, mapBox.min.z}; maxBound = {mapBox.max.x, mapBox.max.z}; break;
-			default: throw std::runtime_error("Bad switch in FillMap::faceVisible");
-		}
-
-		bool biggerThanMap = face.min[0] < minBound.x || face.max[0] > maxBound.x || face.min[1] < minBound.y || face.max[1] > maxBound.y;
-
-		if (!inMap || biggerThanMap) {
+		if (fixed == 0 || fixed == length) {
 			return true;
 		}
 
@@ -152,13 +130,23 @@ public:
 	 * Gets the map of covered blocks.
 	 * @return The block coverage map.
 	 */
-	const std::vector<bool>& getMap() const { return map; }
+	const std::bitset<volume>& getMap() const { return map; }
 
 private:
 	//Stores which blocks are filled in the chunk.
-	std::vector<bool> map;
-	//Bounding box for the start of the map.
-	Aabb<uint64_t> mapBox;
-	//Size of the map, same as mapBox.max - mapBox.min.
-	Aabb<uint64_t>::vec_t mapDims;
+	std::bitset<volume> map;
+
+	static constexpr uint64_t regionMask(uint64_t min, uint64_t max, uint64_t clampMin, uint64_t clampMax) {
+		uint64_t shiftMin = std::max(min, clampMin) - clampMin;
+		uint64_t shiftMax = clampMax - std::min(max, clampMax);
+		uint64_t ret = (0xFFFFFFFFFFFFFFFFul << shiftMin) & (0xFFFFFFFFFFFFFFFFul >> shiftMax);
+
+		//This is necessary and I don't know why... basically every mask after the last filled mask is
+		//returning the same value (the same as the last filled), even though that makes no sense whatsoever.
+		if (shiftMin >= 64 || shiftMax >= 64) {
+			return 0;
+		}
+
+		return ret;
+	}
 };
