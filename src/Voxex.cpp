@@ -194,9 +194,9 @@ void Voxex::loadScreens(DisplayEngine& display) {
 	std::vector<std::shared_ptr<Chunk>> chunks;
 	std::mutex chunkLock;
 
-	constexpr size_t maxI = 1;
-	constexpr size_t maxJ = 1;
-	constexpr size_t maxK = 1;
+	constexpr size_t maxI = 4;
+	constexpr size_t maxJ = 4;
+	constexpr size_t maxK = 4;
 	constexpr size_t maxChunks = maxI * maxJ * maxK;
 
 	std::atomic<double> genTime(0.0);
