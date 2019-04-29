@@ -139,17 +139,12 @@ private:
 	static constexpr uint64_t regionMask(uint64_t min, uint64_t max, uint64_t clampMin, uint64_t clampMax) {
 		uint64_t shiftMin = std::max(min, clampMin) - clampMin;
 		uint64_t shiftMax = clampMax - std::min(max, clampMax);
-		uint64_t ret = (0xFFFFFFFFFFFFFFFFul << shiftMin) & (0xFFFFFFFFFFFFFFFFul >> shiftMax);
 
-		//This is necessary and I don't know why... basically every mask after the last filled mask is
-		//returning the same value (the same as the last filled), even though that makes no sense whatsoever.
-		//shiftMax is correct. ShiftMin is correct. Min is correct. Max is correct. It shifts by the shiftMax of
-		//the last filled mask anyway. There's no reason for this. The computer does what it pleases. Why listen
-		//to me? Clearly it knows better.
+		//As it turns out, shifting past bitwidth is undefined behaviour.
 		if (shiftMin >= 64 || shiftMax >= 64) {
 			return 0;
 		}
 
-		return ret;
+		return (0xFFFFFFFFFFFFFFFFul << shiftMin) & (0xFFFFFFFFFFFFFFFFul >> shiftMax);
 	}
 };
