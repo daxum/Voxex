@@ -143,6 +143,9 @@ private:
 
 		//This is necessary and I don't know why... basically every mask after the last filled mask is
 		//returning the same value (the same as the last filled), even though that makes no sense whatsoever.
+		//shiftMax is correct. ShiftMin is correct. Min is correct. Max is correct. It shifts by the shiftMax of
+		//the last filled mask anyway. There's no reason for this. The computer does what it pleases. Why listen
+		//to me? Clearly it knows better.
 		if (shiftMin >= 64 || shiftMax >= 64) {
 			return 0;
 		}
