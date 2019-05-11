@@ -37,14 +37,20 @@ namespace {
 		glm::vec3(0.0, -1.0, -1.0)
 	};
 
+	constexpr uint64_t hashNum(uint64_t x) {
+		x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9ul;
+		x = (x ^ (x >> 27)) * 0x94d049bb133111ebul;
+		x = x ^ (x >> 31);
+
+		return x;
+	}
+
 	glm::vec3 getGradient(std::array<int64_t, 3> pos, uint64_t seedHash = std::hash<std::string>()(seed)) {
 		uint64_t x = pos.at(0);
 		uint64_t y = pos.at(1);
 		uint64_t z = pos.at(2);
 
-		uint64_t hash1 = ((x + y) * (x + y + 1)) / 2 + y;
-		uint64_t hash2 = ((z + seedHash) * (z + seedHash + 1)) / 2 + seedHash;
-		uint64_t hash = ((hash1 + hash2) * (hash1 + hash2 + 1)) / 2 + hash2;
+		uint64_t hash = (((hashNum(x) << 1) ^ hashNum(y)) ^ ((hashNum(z) << 1) ^ hashNum(seedHash))) >> 1;
 
 		return glm::normalize(corners.at(hash % corners.size()));
 	}

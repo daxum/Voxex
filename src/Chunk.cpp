@@ -31,8 +31,13 @@ ChunkMeshData Chunk::generateMesh() {
 	std::cout << "Reduced from " << (regions.size() * 6) << " to " << faces.size() << " faces - " <<
 				 "completed in " << (end-start) << "ms\n";
 
+	double vertStart = ExMath::getTimeMillis();
+
 	std::vector<Vertex> vertices;
 	std::vector<uint32_t> indices;
+
+	vertices.reserve(faces.size() * 4);
+	indices.reserve(faces.size() * 6);
 
 	const VertexFormat* format = Engine::instance->getModelManager().getFormat(CHUNK_FORMAT);
 
@@ -129,6 +134,10 @@ ChunkMeshData Chunk::generateMesh() {
 		.name = modelName,
 		.mesh = Mesh(buffers, format, vertices, indices, box, radius),
 	};
+
+	double vertEnd = ExMath::getTimeMillis();
+
+	std::cout << "Vertex generation: " << (vertEnd - vertStart) << "ms\n";
 
 	return out;
 }
