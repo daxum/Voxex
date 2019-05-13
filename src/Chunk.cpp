@@ -38,9 +38,7 @@ ChunkMeshData Chunk::generateMesh() {
 	const VertexFormat* format = Engine::instance->getModelManager().getFormat(CHUNK_FORMAT);
 	std::unique_ptr<unsigned char[]> vertexData = std::make_unique<unsigned char[]>(faces.size() * 4 * format->getVertexSize());
 	size_t lastVertex = 0;
-	std::vector<uint32_t> indices;
-
-	indices.reserve(faces.size() * 6);
+	std::vector<uint32_t> indices(faces.size() * 6, 0);
 
 	double faceGenTime = 0.0;
 	double faceAdjustTime = 0.0;
@@ -126,12 +124,16 @@ ChunkMeshData Chunk::generateMesh() {
 			lastVertex++;
 		}
 
-		indices.push_back(baseIndex + 1);
-		indices.push_back(baseIndex);
-		indices.push_back(baseIndex + 3);
-		indices.push_back(baseIndex + 3);
-		indices.push_back(baseIndex);
-		indices.push_back(baseIndex + 2);
+		//When adding the indices, do two 32-bit values at a time for moderate speedup
+		//The order of the added indices is 1, 0, 3, 3, 0, 2
+		uint64_t* indexData = (uint64_t*) indices.data();
+		size_t index = baseIndex / 4 * 3;
+
+		uint64_t val = (((uint64_t)baseIndex) << 32) | baseIndex;
+
+		indexData[index] = val + 1ul;
+		indexData[index + 1] = val + 12884901891ul;
+		indexData[index + 2] = val + 8589934592ul;
 
 		double adjustEnd = ExMath::getTimeMillis();
 
