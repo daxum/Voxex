@@ -23,6 +23,13 @@
 #include "Names.hpp"
 #include "Voxex.hpp"
 
+namespace {
+	struct ChunkVert {
+		glm::vec3 pos;
+		uint32_t normColPack;
+	};
+}
+
 ChunkMeshData Chunk::generateMesh() {
 	double start = ExMath::getTimeMillis();
 
@@ -35,8 +42,7 @@ ChunkMeshData Chunk::generateMesh() {
 
 	double vertStart = ExMath::getTimeMillis();
 
-	const VertexFormat* format = Engine::instance->getModelManager().getFormat(CHUNK_FORMAT);
-	std::unique_ptr<unsigned char[]> vertexData = std::make_unique<unsigned char[]>(faces.size() * 4 * format->getVertexSize());
+	std::unique_ptr<unsigned char[]> vertexData = std::make_unique<unsigned char[]>(faces.size() * 4 * sizeof(ChunkVert));
 	size_t lastVertex = 0;
 	std::vector<uint32_t> indices(faces.size() * 6, 0);
 
@@ -120,7 +126,7 @@ ChunkMeshData Chunk::generateMesh() {
 
 			vert.normColPack = (normal << 16) | type;
 
-			memcpy(&vertexData[lastVertex * format->getVertexSize()], &vert, sizeof(vert));
+			memcpy(&vertexData[lastVertex * sizeof(ChunkVert)], &vert, sizeof(ChunkVert));
 			lastVertex++;
 		}
 
@@ -152,11 +158,13 @@ ChunkMeshData Chunk::generateMesh() {
 		.indexName = CHUNK_INDEX_BUFFER,
 	};
 
-	float radius = std::sqrt(std::sqrt(255*255 + 255*255)*std::sqrt(255*255 + 255*255) + 255*255);
+	//Distance from the center to the corner, calculated with many square roots
+	float radius = 221.7025033688163f;
+	const VertexFormat* format = Engine::instance->getModelManager().getFormat(CHUNK_FORMAT);
 
 	ChunkMeshData out = {
 		.name = modelName,
-		.mesh = Mesh(buffers, format, vertexData.get(), lastVertex * format->getVertexSize(), indices, box, radius),
+		.mesh = Mesh(buffers, format, vertexData.get(), lastVertex * sizeof(ChunkVert), indices, box, radius),
 	};
 
 	double vertEnd = ExMath::getTimeMillis();
