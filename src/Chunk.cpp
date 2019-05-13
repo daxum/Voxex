@@ -16,10 +16,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
 
+#include <memory>
+
 #include "Chunk.hpp"
 #include "Engine.hpp"
 #include "Names.hpp"
 #include "Voxex.hpp"
+
+namespace {
+	struct ChunkVert {
+		glm::vec3 pos;
+		uint32_t normColPack;
+	};
+}
 
 ChunkMeshData Chunk::generateMesh() {
 	double start = ExMath::getTimeMillis();
@@ -31,19 +40,25 @@ ChunkMeshData Chunk::generateMesh() {
 	std::cout << "Reduced from " << (regions.size() * 6) << " to " << faces.size() << " faces - " <<
 				 "completed in " << (end-start) << "ms\n";
 
-	std::vector<Vertex> vertices;
-	std::vector<uint32_t> indices;
+	double vertStart = ExMath::getTimeMillis();
 
-	const VertexFormat* format = Engine::instance->getModelManager().getFormat(CHUNK_FORMAT);
+	std::unique_ptr<unsigned char[]> vertexData = std::make_unique<unsigned char[]>(faces.size() * 4 * sizeof(ChunkVert));
+	size_t lastVertex = 0;
+	std::vector<uint32_t> indices(faces.size() * 6, 0);
+
+	double faceGenTime = 0.0;
+	double faceAdjustTime = 0.0;
 
 	for (const RegionFace& face : faces) {
-		size_t baseIndex = vertices.size();
+		double faceStart = ExMath::getTimeMillis();
+
+		size_t baseIndex = lastVertex;
 
 		std::array<glm::vec3, 4> positions;
 
-		std::array<uint64_t, 2> min = {face.min.at(0), face.min.at(1)};
-		std::array<uint64_t, 2> max = {face.max.at(0), face.max.at(1)};
-		uint64_t fixedCoord = face.getFixedCoord();
+		std::array<float, 2> min = {(float)face.min.at(0), (float)face.min.at(1)};
+		std::array<float, 2> max = {(float)face.max.at(0), (float)face.max.at(1)};
+		float fixedCoord = face.getFixedCoord();
 
 		switch (face.getNormal()) {
 			//Facing -z
@@ -91,28 +106,48 @@ ChunkMeshData Chunk::generateMesh() {
 			default: throw std::runtime_error("Extra direction?!");
 		}
 
+		double faceEnd = ExMath::getTimeMillis();
+
 		for (size_t i = 0; i < positions.size(); i++) {
 			//Center the chunk, invert z
 			positions.at(i) -= glm::vec3(128, 128, 128);
 			positions.at(i).z = -positions.at(i).z;
 
-			Vertex vert(format);
-			vert.setVec3(VERTEX_ELEMENT_POSITION, positions.at(i));
+			//Copy in vertex data
+			struct {
+				glm::vec3 pos;
+				uint32_t normColPack;
+			} vert;
+
+			vert.pos = positions.at(i);
 
 			uint32_t normal = face.getNormal();
 			uint32_t type = face.type;
 
-			vert.setUint32(VERTEX_ELEMENT_PACKED_NORM_COLOR, (normal << 16) | type);
-			vertices.push_back(vert);
+			vert.normColPack = (normal << 16) | type;
+
+			memcpy(&vertexData[lastVertex * sizeof(ChunkVert)], &vert, sizeof(ChunkVert));
+			lastVertex++;
 		}
 
-		indices.push_back(baseIndex + 1);
-		indices.push_back(baseIndex);
-		indices.push_back(baseIndex + 3);
-		indices.push_back(baseIndex + 3);
-		indices.push_back(baseIndex);
-		indices.push_back(baseIndex + 2);
+		//When adding the indices, do two 32-bit values at a time for moderate speedup
+		//The order of the added indices is 1, 0, 3, 3, 0, 2
+		uint64_t* indexData = (uint64_t*) indices.data();
+		size_t index = baseIndex / 4 * 3;
+
+		uint64_t val = (((uint64_t)baseIndex) << 32) | baseIndex;
+
+		indexData[index] = val + 1ul;
+		indexData[index + 1] = val + 12884901891ul;
+		indexData[index + 2] = val + 8589934592ul;
+
+		double adjustEnd = ExMath::getTimeMillis();
+
+		faceGenTime += faceEnd - faceStart;
+		faceAdjustTime += adjustEnd - faceEnd;
 	}
+
+	double meshStart = ExMath::getTimeMillis();
 
 	std::string modelName = "Chunk_" + std::to_string(box.min.x) + "_" + std::to_string(box.min.y) + "_" + std::to_string(box.min.z);
 
@@ -123,12 +158,21 @@ ChunkMeshData Chunk::generateMesh() {
 		.indexName = CHUNK_INDEX_BUFFER,
 	};
 
-	float radius = std::sqrt(std::sqrt(255*255 + 255*255)*std::sqrt(255*255 + 255*255) + 255*255);
+	//Distance from the center to the corner, calculated with many square roots
+	float radius = 221.7025033688163f;
+	const VertexFormat* format = Engine::instance->getModelManager().getFormat(CHUNK_FORMAT);
 
 	ChunkMeshData out = {
 		.name = modelName,
-		.mesh = Mesh(buffers, format, vertices, indices, box, radius),
+		.mesh = Mesh(buffers, format, vertexData.get(), lastVertex * sizeof(ChunkVert), indices, box, radius),
 	};
+
+	double vertEnd = ExMath::getTimeMillis();
+
+	std::cout << "Face gen time: " << faceGenTime << "ms, face adjust time: " << faceAdjustTime << "ms\n";
+	std::cout << "Vertex generation: " << (vertEnd - vertStart) << "ms\n";
+	std::cout << "Mesh construction: " << (vertEnd - meshStart) << "ms\n";
+	std::cout << "Chunk mesh generation: " << (vertEnd - start) << "ms\n";
 
 	return out;
 }

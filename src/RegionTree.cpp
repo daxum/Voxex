@@ -19,6 +19,33 @@
 #include "RegionTree.hpp"
 #include "BlockMap.hpp"
 
+std::ostream& operator<<(std::ostream& out, const RegionFace& face) {
+	out << "Face[";
+
+	switch (face.getNormal()) {
+		//Z
+		case 0:
+		case 2:
+			out << face.min.at(0) << ", " << face.min.at(1) << ", " << face.getFixedCoord() << " | " << face.max.at(0) << ", " << face.max.at(1) << ", " << face.getFixedCoord();
+			break;
+		//X
+		case 1:
+		case 3:
+			out << face.getFixedCoord() << ", " << face.min.at(0) << ", " << face.min.at(1) << " | " << face.getFixedCoord() << ", " << face.max.at(0) << ", " << face.max.at(1);
+			break;
+		//Y
+		case 4:
+		case 5:
+			out << face.min.at(0) << ", " << face.getFixedCoord() << ", " << face.min.at(1) << " | " << face.max.at(0) << ", " << face.getFixedCoord() << ", " << face.max.at(1);
+			break;
+		default: out << "Invalid position!";
+	}
+
+	out << " | facing: " << (uint64_t)face.getNormal() << "]";
+
+	return out;
+}
+
 void RegionTree::addRegions(std::vector<InternalRegion> addRegs) {
 	children.clear();
 	regions.clear();
@@ -141,12 +168,18 @@ size_t RegionTree::size() const {
 }
 
 std::vector<RegionFace> RegionTree::genQuads() const {
-	BlockMap map(box.min, Aabb<uint64_t>::vec_t(box.max) + Aabb<uint64_t>::vec_t(1, 1, 1));
+	BlockMap map;
 
+	double fillStart = ExMath::getTimeMillis();
 	fillMap(map);
+	double fillEnd = ExMath::getTimeMillis();
 
 	std::vector<RegionFace> faces;
+	double genStart = ExMath::getTimeMillis();
 	generateFaces(map, faces);
+	double genEnd = ExMath::getTimeMillis();
+
+	std::cout << "Fill: " << (fillEnd - fillStart) << ", Gen: " << (genEnd - genStart) << "\n";
 
 	return faces;
 }
