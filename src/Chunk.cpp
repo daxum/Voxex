@@ -41,7 +41,12 @@ ChunkMeshData Chunk::generateMesh() {
 
 	const VertexFormat* format = Engine::instance->getModelManager().getFormat(CHUNK_FORMAT);
 
+	double faceGenTime = 0.0;
+	double faceAdjustTime = 0.0;
+
 	for (const RegionFace& face : faces) {
+		double faceStart = ExMath::getTimeMillis();
+
 		size_t baseIndex = vertices.size();
 
 		std::array<glm::vec3, 4> positions;
@@ -96,19 +101,22 @@ ChunkMeshData Chunk::generateMesh() {
 			default: throw std::runtime_error("Extra direction?!");
 		}
 
+		double faceEnd = ExMath::getTimeMillis();
+
 		for (size_t i = 0; i < positions.size(); i++) {
 			//Center the chunk, invert z
 			positions.at(i) -= glm::vec3(128, 128, 128);
 			positions.at(i).z = -positions.at(i).z;
 
-			Vertex vert(format);
+			vertices.emplace_back(format);
+			Vertex& vert = vertices.back();
+
 			vert.setVec3(VERTEX_ELEMENT_POSITION, positions.at(i));
 
 			uint32_t normal = face.getNormal();
 			uint32_t type = face.type;
 
 			vert.setUint32(VERTEX_ELEMENT_PACKED_NORM_COLOR, (normal << 16) | type);
-			vertices.push_back(vert);
 		}
 
 		indices.push_back(baseIndex + 1);
@@ -117,6 +125,11 @@ ChunkMeshData Chunk::generateMesh() {
 		indices.push_back(baseIndex + 3);
 		indices.push_back(baseIndex);
 		indices.push_back(baseIndex + 2);
+
+		double adjustEnd = ExMath::getTimeMillis();
+
+		faceGenTime += faceEnd - faceStart;
+		faceAdjustTime += adjustEnd - faceEnd;
 	}
 
 	std::string modelName = "Chunk_" + std::to_string(box.min.x) + "_" + std::to_string(box.min.y) + "_" + std::to_string(box.min.z);
@@ -137,6 +150,7 @@ ChunkMeshData Chunk::generateMesh() {
 
 	double vertEnd = ExMath::getTimeMillis();
 
+	std::cout << "Face gen time: " << faceGenTime << "ms, face adjust time: " << faceAdjustTime << "ms\n";
 	std::cout << "Vertex generation: " << (vertEnd - vertStart) << "ms\n";
 
 	return out;
