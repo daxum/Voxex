@@ -28,6 +28,11 @@ public:
 	static constexpr size_t area = length * length;
 	static constexpr size_t volume = area * length;
 
+	//Calculated as log2(length)
+	static constexpr size_t lengthShift = 8;
+	//Calculated as log2(area)
+	static constexpr size_t areaShift = 16;
+
 	/**
 	 * Creates a map for representing the filled areas in a chunk.
 	 */
@@ -98,23 +103,55 @@ public:
 			return true;
 		}
 
+		//Innermost loop along z axis, allows for fused visibility checks
+		//This is for the east, west, up, and down axis
+		if (normal != 0 && normal != 2) {
+			uint64_t minZ = face.min.at(1);
+			uint64_t maxZ = face.max.at(1);
+
+			if (normal == 3 || normal == 5) {
+				fixed--;
+			}
+
+			uint64_t shift1 = areaShift;
+			uint64_t shift2 = lengthShift;
+
+			if (normal == 4 || normal == 5) {
+				std::swap(shift1, shift2);
+			}
+
+			uint64_t mask1 = regionMask(minZ, maxZ, 0, 64);
+			uint64_t mask2 = regionMask(minZ, maxZ, 64, 128);
+			uint64_t mask3 = regionMask(minZ, maxZ, 128, 192);
+			uint64_t mask4 = regionMask(minZ, maxZ, 192, 256);
+
+			//i is either y or x, depending on the normal direction - east/west
+			//is y, up/down is x
+			for (uint64_t i = face.min.at(0); i < face.max.at(0); i++) {
+				uint64_t* mapData = (uint64_t*)&map;
+
+				uint64_t baseIndex = ((fixed << shift1) + (i << shift2)) / 64;
+				visible =
+					((mask1 & mapData[baseIndex]) | ~mask1) != 0xFFFFFFFFFFFFFFFF ||
+					((mask2 & mapData[baseIndex + 1]) | ~mask2) != 0xFFFFFFFFFFFFFFFF ||
+					((mask3 & mapData[baseIndex + 2]) | ~mask3) != 0xFFFFFFFFFFFFFFFF ||
+					((mask4 & mapData[baseIndex + 3]) | ~mask4) != 0xFFFFFFFFFFFFFFFF;
+
+				if (visible) {
+					return visible;
+				}
+			}
+
+			return false;
+		}
+
 		for (uint64_t i = face.min.at(0); i < face.max.at(0); i++) {
 			for (uint64_t j = face.min.at(1); j < face.max.at(1); j++) {
-				//Should offset the positive directions (+x, +y, +z, or east, up, south)
-				switch (normal) {
-					//North, -z. i=x, j=y, fixed=z
-					case 0: visible |= !isBlockFilled(i, j, fixed - 1); break;
-					//East, +x. i=y, j=z, fixed=x
-					case 1: visible |= !isBlockFilled(fixed, i, j); break;
-					//South, +z. i=x, j=y, fixed=z
-					case 2: visible |= !isBlockFilled(i, j, fixed); break;
-					//West, -x. i=y, j=z, fixed=x
-					case 3: visible |= !isBlockFilled(fixed - 1, i, j); break;
-					//Up, +y. i=x, j=z, fixed=y
-					case 4: visible |= !isBlockFilled(i, fixed, j); break;
-					//Down, -y. i=x, j=z, fixed=y
-					case 5: visible |= !isBlockFilled(i, fixed - 1, j); break;
-					default: throw std::runtime_error("Bad switch in FillMap::faceVisible");
+				if (normal == 0) {
+					visible = !isBlockFilled(i, j, fixed - 1);
+				}
+				else if (normal == 2) {
+					visible = !isBlockFilled(i, j, fixed);
 				}
 
 				if (visible) {

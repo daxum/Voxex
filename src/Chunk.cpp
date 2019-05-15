@@ -37,21 +37,11 @@ ChunkMeshData Chunk::generateMesh() {
 
 	double end = ExMath::getTimeMillis();
 
-	std::cout << "Reduced from " << (regions.size() * 6) << " to " << faces.size() << " faces - " <<
-				 "completed in " << (end-start) << "ms\n";
-
-	double vertStart = ExMath::getTimeMillis();
-
 	std::unique_ptr<unsigned char[]> vertexData = std::make_unique<unsigned char[]>(faces.size() * 4 * sizeof(ChunkVert));
 	size_t lastVertex = 0;
 	std::vector<uint32_t> indices(faces.size() * 6, 0);
 
-	double faceGenTime = 0.0;
-	double faceAdjustTime = 0.0;
-
 	for (const RegionFace& face : faces) {
-		double faceStart = ExMath::getTimeMillis();
-
 		size_t baseIndex = lastVertex;
 
 		std::array<glm::vec3, 4> positions;
@@ -106,18 +96,13 @@ ChunkMeshData Chunk::generateMesh() {
 			default: throw std::runtime_error("Extra direction?!");
 		}
 
-		double faceEnd = ExMath::getTimeMillis();
-
 		for (size_t i = 0; i < positions.size(); i++) {
 			//Center the chunk, invert z
 			positions.at(i) -= glm::vec3(128, 128, 128);
 			positions.at(i).z = -positions.at(i).z;
 
 			//Copy in vertex data
-			struct {
-				glm::vec3 pos;
-				uint32_t normColPack;
-			} vert;
+			ChunkVert vert;
 
 			vert.pos = positions.at(i);
 
@@ -140,14 +125,7 @@ ChunkMeshData Chunk::generateMesh() {
 		indexData[index] = val + 1ul;
 		indexData[index + 1] = val + 12884901891ul;
 		indexData[index + 2] = val + 8589934592ul;
-
-		double adjustEnd = ExMath::getTimeMillis();
-
-		faceGenTime += faceEnd - faceStart;
-		faceAdjustTime += adjustEnd - faceEnd;
 	}
-
-	double meshStart = ExMath::getTimeMillis();
 
 	std::string modelName = "Chunk_" + std::to_string(box.min.x) + "_" + std::to_string(box.min.y) + "_" + std::to_string(box.min.z);
 
@@ -169,9 +147,10 @@ ChunkMeshData Chunk::generateMesh() {
 
 	double vertEnd = ExMath::getTimeMillis();
 
-	std::cout << "Face gen time: " << faceGenTime << "ms, face adjust time: " << faceAdjustTime << "ms\n";
-	std::cout << "Vertex generation: " << (vertEnd - vertStart) << "ms\n";
-	std::cout << "Mesh construction: " << (vertEnd - meshStart) << "ms\n";
+	std::cout << "Reduced from " << (regions.size() * 6) << " to " << faces.size() << " faces - " <<
+				 "completed in " << (end-start) << "ms\n";
+
+	std::cout << "Vertex generation: " << (vertEnd - end) << "ms\n";
 	std::cout << "Chunk mesh generation: " << (vertEnd - start) << "ms\n";
 
 	return out;
