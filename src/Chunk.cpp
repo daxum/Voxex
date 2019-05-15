@@ -102,10 +102,7 @@ ChunkMeshData Chunk::generateMesh() {
 			positions.at(i).z = -positions.at(i).z;
 
 			//Copy in vertex data
-			struct {
-				glm::vec3 pos;
-				uint32_t normColPack;
-			} vert;
+			ChunkVert vert;
 
 			vert.pos = positions.at(i);
 
