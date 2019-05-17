@@ -18,16 +18,20 @@
 
 #pragma once
 
-#include "GameInterface.hpp"
+#include "Components/AIComponent.hpp"
 
-class Voxex : public GameInterface {
+class PlayerInputComponent : public AIComponent{
 public:
-	static constexpr bool USE_VULKAN = true;
-	static const UniformSet chunkSet;
+	static const std::string getName() { return AI_COMPONENT_NAME; }
 
-	void createRenderObjects(RenderInitializer& renderInit);
-	void loadTextures(std::shared_ptr<TextureLoader> loader) {}
-	void loadModels(ModelLoader& loader);
-	void loadShaders(std::shared_ptr<ShaderLoader> loader);
-	void loadScreens(DisplayEngine& display);
+	PlayerInputComponent() : AIComponent(true), setTarget(false), lastScreen(nullptr) {}
+
+	void update(Screen* screen) override;
+
+	bool onEvent(const InputHandler* handler, const std::shared_ptr<const InputEvent> event) override;
+
+private:
+	bool setTarget;
+	//Temp hack, needs engine changes to pass screen to onEvent.
+	Screen* lastScreen;
 };

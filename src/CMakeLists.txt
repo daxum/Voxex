@@ -17,6 +17,10 @@ add_executable(voxex
 	Perlin.cpp
 	ChunkBuilder.cpp
 	ChunkLoader.cpp
+	Mobs/Adventurer.cpp
+	Mobs/Mob.cpp
+	PlayerInputComponent.cpp
+	FollowCamera.cpp
 )
 
 set_target_properties(voxex PROPERTIES

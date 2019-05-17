@@ -36,8 +36,10 @@ void ChunkLoader::update(Screen* screen) {
 		}
 
 		glm::vec3 pos = loader->getPhysics()->getTranslation();
+
 		Pos_t centerChunk = pos;
-		centerChunk = Aabb<uint64_t>::vec_t(centerChunk) / 256ul;
+		centerChunk = centerChunk - 256l * Pos_t(glm::lessThan(pos, glm::vec3(0.0f)));
+		centerChunk /= 256l;
 
 		int64_t loadRadius = chunkLoaders.at(i).second;
 		Aabb<int64_t> loadBox(centerChunk - loadRadius, centerChunk + loadRadius);
@@ -45,14 +47,14 @@ void ChunkLoader::update(Screen* screen) {
 		for (int64_t x = loadBox.min.x; x <= loadBox.max.x; x++) {
 			for (int64_t y = loadBox.min.y; y <= loadBox.max.y; y++) {
 				for (int64_t z = loadBox.min.z; z <= loadBox.max.z; z++) {
-					Pos_t pos(x, y, z);
+					Pos_t chunkPos(x, y, -z);
 
-					if (!chunkMap.count(pos)) {
-						std::cout << "Generating chunk (" << x << ", " << y << ", " << z << ")\n";
+					if (!chunkMap.count(chunkPos)) {
+						std::cout << "Generating chunk (" << chunkPos.x << ", " << chunkPos.y << ", " << chunkPos.z << ")\n";
 
-						std::shared_ptr<Chunk> chunk = genChunk(pos * 256l);
+						std::shared_ptr<Chunk> chunk = genChunk(chunkPos * 256l);
 						loadedChunks.push_back(chunk);
-						chunkMap.emplace(pos, chunk);
+						chunkMap.emplace(chunkPos, chunk);
 
 						if (chunk->regionCount() != 0) {
 							auto data = chunk->generateMesh();
@@ -62,9 +64,9 @@ void ChunkLoader::update(Screen* screen) {
 							Engine::instance->getModelManager().addMesh(data.name, std::move(data.mesh), false);
 
 							chunkObject->addComponent<RenderComponent>(CHUNK_MAT, data.name);
-							glm::vec3 chunkPos(pos * 256l);
-							chunkPos.z = -chunkPos.z;
-							chunkObject->addComponent<PhysicsComponent>(std::make_shared<PhysicsObject>(data.name, chunkPos));
+							glm::vec3 blockPos(chunkPos * 256l);
+							blockPos.z = -blockPos.z;
+							chunkObject->addComponent<PhysicsComponent>(std::make_shared<PhysicsObject>(data.name, blockPos));
 
 							screen->addObject(chunkObject);
 						}

@@ -25,8 +25,10 @@
 #include "ScreenComponents.hpp"
 #include "AnimatedCamera.hpp"
 #include "Names.hpp"
-#include "DefaultCamera.hpp"
 #include "ChunkLoader.hpp"
+#include "Mobs/Adventurer.hpp"
+#include "Mobs/BoxMonster.hpp"
+#include "FollowCamera.hpp"
 
 namespace {
 #pragma GCC diagnostic push
@@ -117,29 +119,24 @@ void Voxex::loadScreens(DisplayEngine& display) {
 	std::shared_ptr<Screen> world = std::make_shared<Screen>(display, false);
 	world->addComponentManager<RenderComponentManager>();
 	world->addComponentManager<PhysicsComponentManager>();
+	world->addComponentManager<AIComponentManager>();
 	world->addComponentManager<UpdateComponentManager>();
 
 	std::shared_ptr<Object> chunkLoader = std::make_shared<Object>();
 	chunkLoader->addComponent<ChunkLoader>();
-	chunkLoader->getComponent<ChunkLoader>()->addLoader(chunkLoader, 1);
+	//chunkLoader->getComponent<ChunkLoader>()->addLoader(chunkLoader, 1);
 
 	world->addObject(chunkLoader);
 
-	constexpr float dist = 1800.0f;
-	constexpr float center = 0.0f;
-	constexpr float height = 200.0f;
+	for (size_t i = 0; i < 10; i++) {
+		world->addObject(BoxMonster::create({0.0, 300.0 + i + 0.5, 0.0}));
+	}
 
-	const std::vector<std::pair<glm::vec3, glm::quat>> cameraAnimation = {
-		{{-dist + center, height, -center}, {1.0, 0.0, 0.0, 0.0}},
-		{{center, height, dist - center}, {1.0, 0.0, 0.0, 0.0}},
-		{{dist + center, height, -center}, {1.0, 0.0, 0.0, 0.0}},
-		{{center, height, -dist - center}, {1.0, 0.0, 0.0, 0.0}},
-		{{-dist + center, height, -center}, {1.0, 0.0, 0.0, 0.0}},
-		{{center, height, dist - center}, {1.0, 0.0, 0.0, 0.0}},
-		{{dist + center, height, -center}, {1.0, 0.0, 0.0, 0.0}}
-	};
+	std::shared_ptr<Object> player = Adventurer::create();
+	chunkLoader->getComponent<ChunkLoader>()->addLoader(player, 1);
 
-	world->setCamera(std::make_shared<AnimatedCamera>(cameraAnimation, 2000));
+	world->addObject(player);
+	world->setCamera(std::make_shared<FollowCamera>(player));
 
 	display.pushScreen(world);
 }

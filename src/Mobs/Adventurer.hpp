@@ -18,16 +18,29 @@
 
 #pragma once
 
-#include "GameInterface.hpp"
+#include "Mob.hpp"
 
-class Voxex : public GameInterface {
+class Adventurer : public Mob {
 public:
-	static constexpr bool USE_VULKAN = true;
-	static const UniformSet chunkSet;
+	/**
+	 * Creates an adventurer object. Use create instead.
+	 */
+	Adventurer() : Mob() {}
 
-	void createRenderObjects(RenderInitializer& renderInit);
-	void loadTextures(std::shared_ptr<TextureLoader> loader) {}
-	void loadModels(ModelLoader& loader);
-	void loadShaders(std::shared_ptr<ShaderLoader> loader);
-	void loadScreens(DisplayEngine& display);
+	/**
+	 * Attacks with whatever weapon the adventurer happens to be holding.
+	 */
+	void attack() override;
+
+	/**
+	 * Updates attack timers and such.
+	 * @param screen The parent screen for the object.
+	 */
+	void update(Screen* screen) override;
+
+	/**
+	 * Creates a new adventurer object, for adding to the world.
+	 * @return A new adventurer to add to the world.
+	 */
+	static std::shared_ptr<Object> create(/** TODO: Generation parameters go here **/);
 };
