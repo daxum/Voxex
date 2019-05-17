@@ -21,7 +21,7 @@
 int main(int argc, char** argv) {
 	EngineConfig config = {};
 	config.gameName = "Voxex";
-	config.gameVersion = Engine::makeVersion(0, 0, 3);
+	config.gameVersion = Engine::makeVersion(0, 0, 4);
 	config.renderer.renderType = Voxex::USE_VULKAN ? Renderer::VULKAN : Renderer::OPEN_GL;
 	config.renderer.windowWidth = 960;
 	config.renderer.windowHeight = 540;

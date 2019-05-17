@@ -16,6 +16,7 @@ add_executable(voxex
 	Voxex.cpp
 	Perlin.cpp
 	ChunkBuilder.cpp
+	ChunkLoader.cpp
 )
 
 set_target_properties(voxex PROPERTIES

@@ -22,14 +22,11 @@
 #include <fstream>
 
 #include "Voxex.hpp"
-#include "ChunkBuilder.hpp"
-#include "ExtraMath.hpp"
-#include "AxisAlignedBB.hpp"
-#include "Perlin.hpp"
 #include "ScreenComponents.hpp"
 #include "AnimatedCamera.hpp"
 #include "Names.hpp"
 #include "DefaultCamera.hpp"
+#include "ChunkLoader.hpp"
 
 namespace {
 #pragma GCC diagnostic push
@@ -51,80 +48,10 @@ namespace {
 			out << "f " << (indices.at(i) + 1) << "// " << (indices.at(i+1) + 1) << "// " << (indices.at(i+2) + 1) << "//\n";
 		}
 	}
-
-	std::shared_ptr<Chunk> worldGenChunk(const Pos_t& pos) {
-		const std::string seed = "WorldMaker";
-
-		ChunkBuilder chunk(pos);
-		Aabb<int64_t> chunkBox = chunk.getBox();
-
-		//Ground - anything below 0 is underground
-		if (chunkBox.max.y <= 0) {
-			Aabb<int64_t> groundBox = chunkBox;
-
-			chunk.addRegion({16, groundBox});
-		}
-
-		//Add layer of dirt and stone for terrain
-		else if (chunkBox.max.y <= 256 && chunkBox.min.y >= 0) {
-			for (int64_t i = pos.x; i < chunkBox.max.x; i++) {
-				for (int64_t j = pos.z; j < chunkBox.max.z; j++) {
-					float heightPercent = perlin2DOctaves({i, j}, 8, 512, std::hash<std::string>()(seed));
-					int64_t height = (int64_t) (heightPercent * 255) + pos.y;
-					int64_t stoneHeight = pos.y + height / 2;
-
-					if (stoneHeight > 0) {
-						chunk.addRegion({16, Aabb<int64_t>({i, 0, j}, {i+1, stoneHeight, j+1})});
-					}
-
-					chunk.addRegion({2, Aabb<int64_t>({i, stoneHeight, j}, {i+1, height, j+1})});
-				}
-			}
-		}
-
-		return chunk.genChunk();
-	}
 #pragma GCC diagnostic pop
 }
 
-//TODO: This stuff goes elsewhere, most likely in its own class
 namespace {
-	std::shared_ptr<Chunk> genChunk(const Pos_t& pos) {
-		ChunkBuilder chunk(pos);
-
-		std::stack<Aabb<int64_t>> regions;
-		regions.push(Aabb<int64_t>(chunk.getBox().min, chunk.getBox().max));
-
-		while (!regions.empty()) {
-			Aabb<int64_t> box = regions.top();
-			regions.pop();
-
-			constexpr int64_t minEdge = 1;
-			constexpr float fillThreshold = 0.20f;
-			constexpr float cutoffScale = 72.0f;
-			constexpr float discardThreshold = 0.37f;
-
-			float percentFull = perlin3D(box.getCenter(), 256);
-			float adjThreshold = ExMath::clamp(cutoffScale * (1.0f / (256.0f - box.xLength())) + fillThreshold, 0.0f, 0.95f);
-
-			if (percentFull >= adjThreshold) {
-				uint16_t type = 5;//(uint16_t)ExMath::randomInt(0, 19);
-				chunk.addRegion(Region{type, box});
-			}
-			else if (box.xLength() > minEdge && percentFull > discardThreshold) {
-				std::array<Aabb<int64_t>, 8> toAdd = box.split();
-
-				for (Aabb<int64_t> add : toAdd) {
-					if (add.getVolume() > 0) {
-						regions.push(add);
-					}
-				}
-			}
-		}
-
-		return chunk.genChunk();
-	}
-
 	struct ShaderNames {
 		const char* const vertex;
 		const char* const fragment;
@@ -188,90 +115,15 @@ void Voxex::loadShaders(std::shared_ptr<ShaderLoader> loader) {
 //TODO: This is not how this should be done
 void Voxex::loadScreens(DisplayEngine& display) {
 	std::shared_ptr<Screen> world = std::make_shared<Screen>(display, false);
-	world->addComponentManager(std::make_shared<RenderComponentManager>());
-	world->addComponentManager(std::make_shared<PhysicsComponentManager>());
+	world->addComponentManager<RenderComponentManager>();
+	world->addComponentManager<PhysicsComponentManager>();
+	world->addComponentManager<UpdateComponentManager>();
 
-	std::vector<std::shared_ptr<Chunk>> chunks;
-	std::mutex chunkLock;
+	std::shared_ptr<Object> chunkLoader = std::make_shared<Object>();
+	chunkLoader->addComponent<ChunkLoader>();
+	chunkLoader->getComponent<ChunkLoader>()->addLoader(chunkLoader, 1);
 
-	constexpr size_t maxI = 4;
-	constexpr size_t maxJ = 4;
-	constexpr size_t maxK = 4;
-	constexpr size_t maxChunks = maxI * maxJ * maxK;
-
-	std::atomic<double> genTime(0.0);
-	double createTime = ExMath::getTimeMillis();
-
-	Engine::parallelFor(0, maxChunks, [&](size_t val) {
-		size_t i = (val / (maxK * maxJ)) % maxI;
-		size_t j = val / maxK % maxJ;
-		size_t k = val % maxK;
-
-		double start = ExMath::getTimeMillis();
-		std::shared_ptr<Chunk> chunk = genChunk(Pos_t{256*i-256*(maxI/2), 256*j-256*(maxJ/2), 256*k-256*(maxK/2)});
-		double end = ExMath::getTimeMillis();
-
-		std::cout << "Generated chunk " << val << " in " << end - start << "ms\n";
-
-		double genExpect = 0.0;
-		double genAdd = 0.0;
-
-		do {
-			genExpect = genTime.load();
-			genAdd = end - start + genExpect;
-		} while (!genTime.compare_exchange_strong(genExpect, genAdd, std::memory_order_relaxed));
-
-		chunk->validate();
-		chunk->printStats();
-
-		{
-			std::lock_guard<std::mutex> guard(chunkLock);
-			chunks.push_back(chunk);
-		}
-	});
-
-	createTime = ExMath::getTimeMillis() - createTime;
-
-	size_t totalRegions = 0;
-	size_t totalMemUsage = 0;
-
-	for (size_t i = 0; i < chunks.size(); i++) {
-		totalRegions += chunks.at(i)->regionCount();
-		totalMemUsage += chunks.at(i)->getMemUsage();
-	}
-
-//TODO: Multithread face generation only - can't upload off the main thread in opengl
-for (size_t val = 0; val < chunks.size(); val++) {
-//	Engine::parallelFor(0, chunks.size(), [&](size_t val) {
-		if (chunks.at(val)->regionCount() == 0) {
-			continue;
-		}
-
-		auto data = chunks.at(val)->generateMesh();
-		//writeObj(data.model.name, data.mesh);
-
-		std::shared_ptr<Object> chunkObject = std::make_shared<Object>();
-
-		{
-			std::lock_guard<std::mutex> guard(chunkLock);
-			Engine::instance->getModelManager().addMesh(data.name, std::move(data.mesh), false);
-
-			chunkObject->addComponent<RenderComponent>(CHUNK_MAT, data.name);
-			glm::vec3 chunkPos = chunks.at(val)->getBox().getCenter();
-			chunkPos.z = -chunkPos.z;
-			chunkObject->addComponent(std::make_shared<PhysicsComponent>(std::make_shared<PhysicsObject>(data.name, chunkPos)));
-		}
-
-		world->addObject(chunkObject);
-
-		std::cout << "Chunk " << val << " complete!\n";
-	}//);
-
-	std::cout << "Generated in " << genTime.load() << "ms (" << genTime.load() / (maxI*maxJ*maxK) << "ms per chunk)!\n";
-	std::cout << "Generation completed in " << createTime << "ms\n";
-	std::cout << "Generated " << totalRegions << " regions\n";
-	//Yes, I know the correct term
-	std::cout << "Chunks using around " << (totalMemUsage >> 10) << " kilobytes in total\n";
+	world->addObject(chunkLoader);
 
 	constexpr float dist = 1800.0f;
 	constexpr float center = 0.0f;
