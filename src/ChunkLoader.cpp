@@ -24,7 +24,29 @@
 #include "ScreenComponents.hpp"
 #include "Names.hpp"
 
+ChunkLoader::ChunkLoader() :
+	genThread(&ChunkLoader::genChunkWorker, this),
+	genStop(false) {
+
+}
+
+
+ChunkLoader::~ChunkLoader() {
+	genStop.store(true);
+	//Wake up worker thread if nothing was queued for generation
+	genPos.push(Pos_t(0, 0, 0));
+	genThread.join();
+}
+
 void ChunkLoader::update(Screen* screen) {
+	//Add generated chunks to world
+	std::shared_ptr<Chunk> chunk;
+
+	while (completeChunks.try_pop(chunk)) {
+		addChunk(screen, chunk);
+	}
+
+	//Queue up new chunks for generation
 	for (size_t i = 0; i < chunkLoaders.size(); i++) {
 		std::shared_ptr<Object> loader = chunkLoaders.at(i).first.lock();
 
@@ -41,39 +63,113 @@ void ChunkLoader::update(Screen* screen) {
 		centerChunk = centerChunk - 256l * Pos_t(glm::lessThan(pos, glm::vec3(0.0f)));
 		centerChunk /= 256l;
 
-		int64_t loadRadius = chunkLoaders.at(i).second;
+		//Chunks which must be loaded, at all costs
+		int64_t critRadius = chunkLoaders.at(i).second;
+		Aabb<int64_t> critBox(centerChunk - critRadius, centerChunk + critRadius);
+
+		//Chunks which can be loaded, for gameplay smoothness
+		int64_t loadRadius = chunkLoaders.at(i).second * 2;
 		Aabb<int64_t> loadBox(centerChunk - loadRadius, centerChunk + loadRadius);
 
-		for (int64_t x = loadBox.min.x; x <= loadBox.max.x; x++) {
-			for (int64_t y = loadBox.min.y; y <= loadBox.max.y; y++) {
-				for (int64_t z = loadBox.min.z; z <= loadBox.max.z; z++) {
+		size_t missingCrit = 0;
+
+		//Add critical chunks first
+		for (int64_t x = critBox.min.x; x <= critBox.max.x; x++) {
+			for (int64_t y = critBox.min.y; y <= critBox.max.y; y++) {
+				for (int64_t z = critBox.min.z; z <= critBox.max.z; z++) {
 					Pos_t chunkPos(x, y, -z);
+					chunkPos *= 256l;
 
 					if (!chunkMap.count(chunkPos)) {
-						std::cout << "Generating chunk (" << chunkPos.x << ", " << chunkPos.y << ", " << chunkPos.z << ")\n";
+						std::cout << "Queuing chunk (" << chunkPos.x << ", " << chunkPos.y << ", " << chunkPos.z << ") for generation\n";
 
-						std::shared_ptr<Chunk> chunk = genChunk(chunkPos * 256l);
-						loadedChunks.push_back(chunk);
-						chunkMap.emplace(chunkPos, chunk);
+						chunkMap.emplace(chunkPos, std::shared_ptr<Chunk>());
+						genPos.push(chunkPos);
+					}
 
-						if (chunk->regionCount() != 0) {
-							auto data = chunk->generateMesh();
-
-							std::shared_ptr<Object> chunkObject = std::make_shared<Object>();
-
-							Engine::instance->getModelManager().addMesh(data.name, std::move(data.mesh), false);
-
-							chunkObject->addComponent<RenderComponent>(CHUNK_MAT, data.name);
-							glm::vec3 blockPos(chunkPos * 256l);
-							blockPos.z = -blockPos.z;
-							chunkObject->addComponent<PhysicsComponent>(std::make_shared<PhysicsObject>(data.name, blockPos));
-
-							screen->addObject(chunkObject);
-						}
+					//Determine number of unloaded critical chunks
+					if (!chunkMap.at(chunkPos)) {
+						missingCrit++;
 					}
 				}
 			}
 		}
+
+		//Then add less important chunks
+		for (int64_t x = loadBox.min.x; x <= loadBox.max.x; x++) {
+			for (int64_t y = loadBox.min.y; y <= loadBox.max.y; y++) {
+				for (int64_t z = loadBox.min.z; z <= loadBox.max.z; z++) {
+					Pos_t chunkPos(x, y, -z);
+					chunkPos *= 256l;
+
+					if (!chunkMap.count(chunkPos)) {
+						std::cout << "Queuing chunk (" << chunkPos.x << ", " << chunkPos.y << ", " << chunkPos.z << ") for generation\n";
+
+						chunkMap.emplace(chunkPos, std::shared_ptr<Chunk>());
+						genPos.push(chunkPos);
+					}
+				}
+			}
+		}
+
+		//Wait until all critical chunks are loaded
+		while (missingCrit > 0) {
+			if (!completeChunks.try_pop(chunk)) {
+				continue;
+			}
+
+			Pos_t chunkPos = chunk->getBox().min;
+			Pos_t chunkCoords = chunkPos / 256l;
+			chunkCoords.z = -chunkCoords.z;
+
+			if (critBox.contains(Aabb<int64_t>(chunkCoords, chunkCoords))) {
+				missingCrit--;
+			}
+
+			addChunk(screen, chunk);
+		}
+	}
+}
+
+void ChunkLoader::addChunk(Screen* screen, std::shared_ptr<Chunk> chunk) {
+	Pos_t chunkPos = chunk->getBox().min;
+
+	loadedChunks.push_back(chunk);
+	chunkMap[chunkPos] = chunk;
+
+	if (chunk->regionCount() != 0) {
+		auto data = chunk->generateMesh();
+
+		std::shared_ptr<Object> chunkObject = std::make_shared<Object>();
+
+		Engine::instance->getModelManager().addMesh(data.name, std::move(data.mesh), false);
+
+		chunkObject->addComponent<RenderComponent>(CHUNK_MAT, data.name);
+		glm::vec3 blockPos = chunkPos;
+		blockPos.z = -blockPos.z;
+		chunkObject->addComponent<PhysicsComponent>(std::make_shared<PhysicsObject>(data.name, blockPos));
+
+		screen->addObject(chunkObject);
+	}
+}
+
+void ChunkLoader::genChunkWorker() {
+	while (true) {
+		Pos_t pos(0, 0, 0);
+
+		//Obviously there's no use case for a blocking pop, so why even
+		//bother, right?
+		if (!genPos.try_pop(pos)) {
+			//TODO: sleep
+			continue;
+		}
+
+		if (genStop.load()) {
+			break;
+		}
+
+		std::shared_ptr<Chunk> chunk = genChunk(pos);
+		completeChunks.push(chunk);
 	}
 }
 

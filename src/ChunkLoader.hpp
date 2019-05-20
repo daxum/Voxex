@@ -21,12 +21,27 @@
 #include <memory>
 #include <vector>
 #include <unordered_map>
+#include <thread>
+#include <atomic>
+
+#include <tbb/concurrent_queue.h>
 
 #include "Components/UpdateComponent.hpp"
 #include "Chunk.hpp"
 
 class ChunkLoader : public UpdateComponent {
 public:
+	/**
+	 * Initializes values and starts the chunk generator thread.
+	 */
+	ChunkLoader();
+
+	/**
+	 * Sends the stop signal to the worker thread and flushes all chunks
+	 * to disk, if needed.
+	 */
+	~ChunkLoader();
+
 	/**
 	 * Refreshes which chunks should be loaded, unloads uneeded chunks,
 	 * asynchronously generates chunks, etc.
@@ -60,6 +75,28 @@ private:
 	//All objects capable of loading chunks, as well as the radius of the
 	//box they should load.
 	std::vector<std::pair<std::weak_ptr<Object>, uint64_t>> chunkLoaders;
+
+	//Chunk generation thread.
+	std::thread genThread;
+	//Signals that generation should stop (generation thread should exit).
+	std::atomic<bool> genStop;
+	//Chunks which have finished generation and can be added to the map.
+	tbb::concurrent_queue<std::shared_ptr<Chunk>> completeChunks;
+	//Queue of positions to generate.
+	tbb::concurrent_queue<Pos_t> genPos;
+
+	/**
+	 * Adds a chunk to the loader's internal data structure, as well as
+	 * the provided screen.
+	 * @param screen The screen to add the chunk to.
+	 * @param chunk The chunk to add to the screen.
+	 */
+	void addChunk(Screen* screen, std::shared_ptr<Chunk> chunk);
+
+	/**
+	 * Function ran by the chunk generator thread.
+	 */
+	void genChunkWorker();
 
 	/**
 	 * Temporary function to generate a chunk using the given position.
