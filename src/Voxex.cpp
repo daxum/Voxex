@@ -77,9 +77,10 @@ namespace {
 
 void Voxex::createRenderObjects(RenderInitializer& renderInit) {
 	const size_t chunkBufferSize = 1'073'741'824;
+	const size_t indexSize = (4 * chunkBufferSize) / 6;
 
 	renderInit.createBuffer(CHUNK_VERTEX_BUFFER, chunkBufferSize, BufferType::VERTEX, BufferStorage::DEVICE);
-	renderInit.createBuffer(CHUNK_INDEX_BUFFER, chunkBufferSize / 6, BufferType::INDEX, BufferStorage::DEVICE);
+	renderInit.createBuffer(CHUNK_INDEX_BUFFER, indexSize, BufferType::INDEX, BufferStorage::DEVICE);
 
 	renderInit.addVertexFormat(CHUNK_FORMAT, VertexFormat({
 		{VERTEX_ELEMENT_POSITION, VertexFormat::ElementType::VEC3},
