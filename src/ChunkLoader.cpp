@@ -34,7 +34,7 @@ void ChunkLoader::update(Screen* screen) {
 
 	//Queue up new chunks for generation
 	for (size_t i = 0; i < chunkLoaders.size(); i++) {
-		std::shared_ptr<Object> loader = chunkLoaders.at(i).first.lock();
+		std::shared_ptr<Object> loader = chunkLoaders.at(i).loader.lock();
 
 		if (!loader) {
 			chunkLoaders.at(i) = chunkLoaders.back();
@@ -50,11 +50,11 @@ void ChunkLoader::update(Screen* screen) {
 		centerChunk /= 256l;
 
 		//Chunks which must be loaded, at all costs
-		int64_t critRadius = chunkLoaders.at(i).second;
+		int64_t critRadius = chunkLoaders.at(i).critRange;
 		Aabb<int64_t> critBox(centerChunk - critRadius, centerChunk + critRadius);
 
 		//Chunks which can be loaded, for gameplay smoothness
-		int64_t loadRadius = chunkLoaders.at(i).second * 2;
+		int64_t loadRadius = chunkLoaders.at(i).prefRange;
 		Aabb<int64_t> loadBox(centerChunk - loadRadius, centerChunk + loadRadius);
 
 		size_t missingCrit = 0;
@@ -94,6 +94,10 @@ void ChunkLoader::update(Screen* screen) {
 						chunkMap.emplace(chunkPos, std::shared_ptr<Chunk>());
 						dispatchChunkGen(chunkPos);
 					}
+					else if (chunkMap.at(chunkPos)) {
+						//Chunk already exists, so upload its "last required to be loaded" timer
+						chunkMap.at(chunkPos)->loadTimer = tick;
+					}
 				}
 			}
 		}
@@ -115,11 +119,33 @@ void ChunkLoader::update(Screen* screen) {
 			addChunk(screen, chunk);
 		}
 	}
+
+	//Unload all chunks which have not been needed for the last 120 ticks (currently 2 seconds)
+	for (size_t i = 0; i < loadedChunks.size(); i++) {
+		std::shared_ptr<Chunk> chunk = loadedChunks.at(i);
+
+		if (tick - chunk->loadTimer > 120) {
+			Pos_t chunkPos = chunk->getBox().min;
+			chunkPos.z = -chunkPos.z;
+
+			chunkMap.erase(chunkPos);
+			loadedChunks.at(i) = loadedChunks.back();
+			loadedChunks.pop_back();
+			i--;
+
+			//TODO: save chunk to disk
+			std::cout << "Removed chunk " << chunk->getBox() << "\n";
+			std::cout << loadedChunks.size() << " chunks loaded\n";
+		}
+	}
+
+	tick++;
 }
 
 void ChunkLoader::addChunk(Screen* screen, std::shared_ptr<Chunk> chunk) {
 	Pos_t chunkPos = chunk->getBox().min;
 
+	chunk->loadTimer = tick;
 	loadedChunks.push_back(chunk);
 	chunkMap[chunkPos] = chunk;
 

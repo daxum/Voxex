@@ -37,7 +37,12 @@ struct ChunkMeshData {
 
 class Chunk {
 public:
+	//Used for chunk loading.
+	//TODO: find better place.
+	size_t loadTimer;
+
 	Chunk(const Aabb<uint64_t>& box, const std::vector<InternalRegion>& addRegs) :
+		loadTimer(0),
 		box(box) {
 
 		regions.addRegions(addRegs);

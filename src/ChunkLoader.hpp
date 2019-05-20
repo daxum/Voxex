@@ -29,6 +29,8 @@
 
 class ChunkLoader : public UpdateComponent {
 public:
+	ChunkLoader() : tick(0) {}
+
 	/**
 	 * Refreshes which chunks should be loaded, unloads uneeded chunks,
 	 * asynchronously generates chunks, etc.
@@ -39,10 +41,11 @@ public:
 	/**
 	 * Adds a chunk loader to the world.
 	 * @param The object for which the chunks are loaded.
-	 * @param dist The radius at which chunks are loaded.
+	 * @param critDist The range of chunks which must be loaded at all times.
+	 * @param prefDist The range of chunks which should be loaded for gameplay smoothness.
 	 */
-	void addLoader(std::shared_ptr<Object> object, uint64_t dist) {
-		chunkLoaders.emplace_back(object, dist);
+	void addLoader(std::shared_ptr<Object> object, uint64_t critDist, uint64_t prefDist) {
+		chunkLoaders.push_back({object, critDist, prefDist});
 	}
 
 private:
@@ -55,13 +58,21 @@ private:
 		}
 	};
 
+	struct LoaderObj {
+		std::weak_ptr<Object> loader;
+		uint64_t critRange;
+		uint64_t prefRange;
+	};
+
+	//Current tick, used for determining which chunks to unload.
+	size_t tick;
 	//All currently loaded chunks, sorted by position.
 	std::unordered_map<Pos_t, std::shared_ptr<Chunk>, PosHash> chunkMap;
-	//Stores all currently loaded chunks.
+	//Stores all currently loaded chunks, along with the time they were last required to be loaded.
 	std::vector<std::shared_ptr<Chunk>> loadedChunks;
 	//All objects capable of loading chunks, as well as the radius of the
 	//box they should load.
-	std::vector<std::pair<std::weak_ptr<Object>, uint64_t>> chunkLoaders;
+	std::vector<LoaderObj> chunkLoaders;
 	//Chunks which have finished generation and can be added to the map.
 	tbb::concurrent_queue<std::shared_ptr<Chunk>> completeChunks;
 

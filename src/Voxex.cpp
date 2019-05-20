@@ -134,7 +134,7 @@ void Voxex::loadScreens(DisplayEngine& display) {
 	}
 
 	std::shared_ptr<Object> player = Adventurer::create();
-	chunkLoader->getComponent<ChunkLoader>()->addLoader(player, 1);
+	chunkLoader->getComponent<ChunkLoader>()->addLoader(player, 1, 3);
 
 	world->addObject(player);
 	world->setCamera(std::make_shared<FollowCamera>(player));
