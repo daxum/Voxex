@@ -24,21 +24,6 @@
 #include "ScreenComponents.hpp"
 #include "Names.hpp"
 
-ChunkLoader::ChunkLoader() :
-	genThread(&ChunkLoader::genChunkWorker, this),
-	genStop(false) {
-
-}
-
-
-ChunkLoader::~ChunkLoader() {
-	genStop.store(true);
-	//Wake up worker thread if nothing was queued for generation
-	genPos.push(Pos_t(0, 0, 0));
-	genWait.notify_all();
-	genThread.join();
-}
-
 void ChunkLoader::update(Screen* screen) {
 	//Add generated chunks to world
 	std::shared_ptr<Chunk> chunk;
@@ -85,8 +70,7 @@ void ChunkLoader::update(Screen* screen) {
 						std::cout << "Queuing chunk (" << chunkPos.x << ", " << chunkPos.y << ", " << chunkPos.z << ") for generation\n";
 
 						chunkMap.emplace(chunkPos, std::shared_ptr<Chunk>());
-						genPos.push(chunkPos);
-						genWait.notify_all();
+						dispatchChunkGen(chunkPos);
 					}
 
 					//Determine number of unloaded critical chunks
@@ -108,8 +92,7 @@ void ChunkLoader::update(Screen* screen) {
 						std::cout << "Queuing chunk (" << chunkPos.x << ", " << chunkPos.y << ", " << chunkPos.z << ") for generation\n";
 
 						chunkMap.emplace(chunkPos, std::shared_ptr<Chunk>());
-						genPos.push(chunkPos);
-						genWait.notify_all();
+						dispatchChunkGen(chunkPos);
 					}
 				}
 			}
@@ -156,26 +139,11 @@ void ChunkLoader::addChunk(Screen* screen, std::shared_ptr<Chunk> chunk) {
 	}
 }
 
-void ChunkLoader::genChunkWorker() {
-	while (true) {
-		Pos_t pos(0, 0, 0);
-
-		//Obviously there's no use case for a blocking pop, so why even
-		//bother, right?
-		if (!genPos.try_pop(pos)) {
-			std::unique_lock<std::mutex> lock(genLock);
-			genWait.wait(lock);
-
-			continue;
-		}
-
-		if (genStop.load()) {
-			break;
-		}
-
+void ChunkLoader::dispatchChunkGen(const Pos_t& pos) {
+	Engine::runAsync([&, pos]() {
 		std::shared_ptr<Chunk> chunk = genChunk(pos);
 		completeChunks.push(chunk);
-	}
+	});
 }
 
 std::shared_ptr<Chunk> ChunkLoader::genChunk(const Pos_t& pos) {
