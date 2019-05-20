@@ -35,6 +35,7 @@ ChunkLoader::~ChunkLoader() {
 	genStop.store(true);
 	//Wake up worker thread if nothing was queued for generation
 	genPos.push(Pos_t(0, 0, 0));
+	genWait.notify_all();
 	genThread.join();
 }
 
@@ -85,6 +86,7 @@ void ChunkLoader::update(Screen* screen) {
 
 						chunkMap.emplace(chunkPos, std::shared_ptr<Chunk>());
 						genPos.push(chunkPos);
+						genWait.notify_all();
 					}
 
 					//Determine number of unloaded critical chunks
@@ -107,6 +109,7 @@ void ChunkLoader::update(Screen* screen) {
 
 						chunkMap.emplace(chunkPos, std::shared_ptr<Chunk>());
 						genPos.push(chunkPos);
+						genWait.notify_all();
 					}
 				}
 			}
@@ -160,7 +163,9 @@ void ChunkLoader::genChunkWorker() {
 		//Obviously there's no use case for a blocking pop, so why even
 		//bother, right?
 		if (!genPos.try_pop(pos)) {
-			//TODO: sleep
+			std::unique_lock<std::mutex> lock(genLock);
+			genWait.wait(lock);
+
 			continue;
 		}
 

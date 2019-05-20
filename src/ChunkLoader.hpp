@@ -23,6 +23,8 @@
 #include <unordered_map>
 #include <thread>
 #include <atomic>
+#include <condition_variable>
+#include <mutex>
 
 #include <tbb/concurrent_queue.h>
 
@@ -80,6 +82,10 @@ private:
 	std::thread genThread;
 	//Signals that generation should stop (generation thread should exit).
 	std::atomic<bool> genStop;
+	//Used to sleep until chunks need to be generated.
+	std::condition_variable genWait;
+	//Needed for condition variable.
+	std::mutex genLock;
 	//Chunks which have finished generation and can be added to the map.
 	tbb::concurrent_queue<std::shared_ptr<Chunk>> completeChunks;
 	//Queue of positions to generate.
