@@ -16,6 +16,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
 
+#include <memory>
+
 #include "RegionTree.hpp"
 #include "BlockMap.hpp"
 
@@ -168,12 +170,12 @@ size_t RegionTree::size() const {
 }
 
 std::vector<RegionFace> RegionTree::genQuads() const {
-	BlockMap map;
+	std::unique_ptr<BlockMap> map = std::make_unique<BlockMap>();
 
-	fillMap(map);
+	fillMap(*map);
 
 	std::vector<RegionFace> faces;
-	generateFaces(map, faces);
+	generateFaces(*map, faces);
 
 	return faces;
 }
