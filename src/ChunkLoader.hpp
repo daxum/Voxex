@@ -68,7 +68,7 @@ private:
 	size_t tick;
 	//All currently loaded chunks, sorted by position.
 	std::unordered_map<Pos_t, std::shared_ptr<Chunk>, PosHash> chunkMap;
-	//Stores all currently loaded chunks, along with the time they were last required to be loaded.
+	//Stores all currently loaded chunks.
 	std::vector<std::shared_ptr<Chunk>> loadedChunks;
 	//All objects capable of loading chunks, as well as the radius of the
 	//box they should load.

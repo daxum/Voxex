@@ -23,6 +23,7 @@
 #include "Models/Mesh.hpp"
 #include "BlockMap.hpp"
 
+class Object;
 typedef Aabb<int64_t>::vec_t Pos_t;
 
 struct Region {
@@ -92,7 +93,20 @@ public:
 	 */
 	size_t getMemUsage() { return sizeof(Chunk) - sizeof(RegionTree) + regions.getMemUsage(); }
 
+	/**
+	 * Gets the object for the chunk.
+	 * @return The chunk's object.
+	 */
+	std::shared_ptr<Object> getObject() { return object; }
+
+	/**
+	 * Creates the chunk's object based on the regions currently in its tree.
+	 */
+	void createObject();
+
 private:
+	//Object used to represent the chunk in the game world.
+	std::shared_ptr<Object> object;
 	//List of regions in the chunk.
 	RegionTree regions;
 	//Chunk bounding box.

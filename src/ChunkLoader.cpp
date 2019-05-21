@@ -95,7 +95,7 @@ void ChunkLoader::update(Screen* screen) {
 						dispatchChunkGen(chunkPos);
 					}
 					else if (chunkMap.at(chunkPos)) {
-						//Chunk already exists, so upload its "last required to be loaded" timer
+						//Chunk already exists, so update its "last required to be loaded" timer
 						chunkMap.at(chunkPos)->loadTimer = tick;
 					}
 				}
@@ -126,7 +126,14 @@ void ChunkLoader::update(Screen* screen) {
 
 		if (tick - chunk->loadTimer > 120) {
 			Pos_t chunkPos = chunk->getBox().min;
-			chunkPos.z = -chunkPos.z;
+
+			if (chunk->getObject()) {
+				screen->removeObject(chunk->getObject());
+			}
+
+			if (!chunkMap.count(chunkPos)) {
+				throw std::runtime_error("Bad map entry!\n");
+			}
 
 			chunkMap.erase(chunkPos);
 			loadedChunks.at(i) = loadedChunks.back();
@@ -145,24 +152,14 @@ void ChunkLoader::update(Screen* screen) {
 void ChunkLoader::addChunk(Screen* screen, std::shared_ptr<Chunk> chunk) {
 	Pos_t chunkPos = chunk->getBox().min;
 
+	if (chunk->regionCount() != 0) {
+		chunk->createObject();
+		screen->addObject(chunk->getObject());
+	}
+
 	chunk->loadTimer = tick;
 	loadedChunks.push_back(chunk);
 	chunkMap[chunkPos] = chunk;
-
-	if (chunk->regionCount() != 0) {
-		auto data = chunk->generateMesh();
-
-		std::shared_ptr<Object> chunkObject = std::make_shared<Object>();
-
-		Engine::instance->getModelManager().addMesh(data.name, std::move(data.mesh), false);
-
-		chunkObject->addComponent<RenderComponent>(CHUNK_MAT, data.name);
-		glm::vec3 blockPos = chunkPos;
-		blockPos.z = -blockPos.z;
-		chunkObject->addComponent<PhysicsComponent>(std::make_shared<PhysicsObject>(data.name, blockPos));
-
-		screen->addObject(chunkObject);
-	}
 }
 
 void ChunkLoader::dispatchChunkGen(const Pos_t& pos) {

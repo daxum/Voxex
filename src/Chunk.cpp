@@ -22,6 +22,7 @@
 #include "Engine.hpp"
 #include "Names.hpp"
 #include "Voxex.hpp"
+#include "ScreenComponents.hpp"
 
 namespace {
 	struct ChunkVert {
@@ -31,11 +32,11 @@ namespace {
 }
 
 ChunkMeshData Chunk::generateMesh() {
-	double start = ExMath::getTimeMillis();
+//	double start = ExMath::getTimeMillis();
 
 	std::vector<RegionFace> faces = regions.genQuads();
 
-	double end = ExMath::getTimeMillis();
+//	double end = ExMath::getTimeMillis();
 
 	std::unique_ptr<unsigned char[]> vertexData = std::make_unique<unsigned char[]>(faces.size() * 4 * sizeof(ChunkVert));
 	size_t lastVertex = 0;
@@ -145,13 +146,13 @@ ChunkMeshData Chunk::generateMesh() {
 		.mesh = Mesh(buffers, format, vertexData.get(), lastVertex * sizeof(ChunkVert), indices, box, radius),
 	};
 
-	double vertEnd = ExMath::getTimeMillis();
+//	double vertEnd = ExMath::getTimeMillis();
 
-	std::cout << "Reduced from " << (regions.size() * 6) << " to " << faces.size() << " faces - " <<
-				 "completed in " << (end-start) << "ms\n";
+//	std::cout << "Reduced from " << (regions.size() * 6) << " to " << faces.size() << " faces - " <<
+//				 "completed in " << (end-start) << "ms\n";
 
-	std::cout << "Vertex generation: " << (vertEnd - end) << "ms\n";
-	std::cout << "Chunk mesh generation: " << (vertEnd - start) << "ms\n";
+//	std::cout << "Vertex generation: " << (vertEnd - end) << "ms\n";
+//	std::cout << "Chunk mesh generation: " << (vertEnd - start) << "ms\n";
 
 	return out;
 }
@@ -160,4 +161,17 @@ void Chunk::printStats() {
 	//std::cout << "Tree loads: " << "\n";
 	//regions.printCounts();
 	std::cout << "Regions: " << regions.size() << ", Nodes: " << regions.getNodeCount() << ", Size: " << regions.getMemUsage() << " bytes\n";
+}
+
+void Chunk::createObject() {
+	auto data = generateMesh();
+
+	object = std::make_shared<Object>();
+
+	Engine::instance->getModelManager().addMesh(data.name, std::move(data.mesh), false);
+
+	object->addComponent<RenderComponent>(CHUNK_MAT, data.name);
+	glm::vec3 blockPos = box.min;
+	blockPos.z = -blockPos.z;
+	object->addComponent<PhysicsComponent>(std::make_shared<PhysicsObject>(data.name, blockPos));
 }
