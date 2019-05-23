@@ -19,6 +19,7 @@
 #include "Adventurer.hpp"
 #include "../PlayerInputComponent.hpp"
 #include "ScreenComponents.hpp"
+#include "../Names.hpp"
 
 namespace {
 	const std::array<glm::vec3, 3> attackRots = {
@@ -104,6 +105,7 @@ std::shared_ptr<Object> Adventurer::create() {
 	//TODO: Control type of input - controlled or AI
 	adventurer->addComponent<PlayerInputComponent>();
 	adventurer->addComponent<Adventurer>();
+	adventurer->addComponent<RenderComponent>(PLAYER_MAT, PLAYER_MESH);
 
 	return adventurer;
 }

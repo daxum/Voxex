@@ -67,8 +67,6 @@ void ChunkLoader::update(Screen* screen) {
 					chunkPos *= 256l;
 
 					if (!chunkMap.count(chunkPos)) {
-						std::cout << "Queuing chunk (" << chunkPos.x << ", " << chunkPos.y << ", " << chunkPos.z << ") for generation\n";
-
 						chunkMap.emplace(chunkPos, std::shared_ptr<Chunk>());
 						dispatchChunkGen(chunkPos);
 					}
@@ -89,8 +87,6 @@ void ChunkLoader::update(Screen* screen) {
 					chunkPos *= 256l;
 
 					if (!chunkMap.count(chunkPos)) {
-						std::cout << "Queuing chunk (" << chunkPos.x << ", " << chunkPos.y << ", " << chunkPos.z << ") for generation\n";
-
 						chunkMap.emplace(chunkPos, std::shared_ptr<Chunk>());
 						dispatchChunkGen(chunkPos);
 					}
@@ -141,8 +137,6 @@ void ChunkLoader::update(Screen* screen) {
 			i--;
 
 			//TODO: save chunk to disk
-			std::cout << "Removed chunk " << chunk->getBox() << "\n";
-			std::cout << loadedChunks.size() << " chunks loaded\n";
 		}
 	}
 

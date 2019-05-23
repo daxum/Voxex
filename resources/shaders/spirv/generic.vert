@@ -16,18 +16,36 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
 
-#pragma once
+#version 450 core
+#extension GL_ARB_separate_shader_objects : enable
 
-#include "GameInterface.hpp"
+layout (location = 0) in vec3 posIn;
+layout (location = 1) in vec3 normIn;
+layout (location = 2) in vec2 texIn;
 
-class Voxex : public GameInterface {
-public:
-	static constexpr bool USE_VULKAN = true;
-	static const UniformSet chunkSet;
-
-	void createRenderObjects(RenderInitializer& renderInit) override;
-	void loadTextures(std::shared_ptr<TextureLoader> loader) override;
-	void loadModels(ModelLoader& loader) override;
-	void loadShaders(std::shared_ptr<ShaderLoader> loader) override;
-	void loadScreens(DisplayEngine& display) override;
+out gl_PerVertex {
+    vec4 gl_Position;
 };
+
+layout(location = 0) out vec3 pos;
+layout(location = 1) out vec3 norm;
+layout(location = 2) out vec2 tex;
+
+layout(set = 0, binding = 0, std140) uniform ScreenData {
+	mat4 projection;
+	mat4 view;
+} screen;
+
+layout(push_constant, std430) uniform ObjectData {
+	layout(offset = 0) mat4 modelView;
+} object;
+
+void main() {
+	vec4 posCameraSpace = object.modelView * vec4(posIn, 1.0);
+
+	pos = posCameraSpace.xyz;
+	norm = (object.modelView * vec4(normIn, 0.0)).xyz;
+	tex = texIn;
+
+	gl_Position = screen.projection * posCameraSpace;
+}

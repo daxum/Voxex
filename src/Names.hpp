@@ -22,10 +22,13 @@
 
 const char* const CHUNK_VERTEX_BUFFER = "chnkvBfr";
 const char* const CHUNK_INDEX_BUFFER = "chnkiBfr";
+const char* const GENERIC_VERTEX_BUFFER = "gncvBfr";
+const char* const GENERIC_INDEX_BUFFER = "gnciBfr";
 
 //Vertex formats
 
 const char* const CHUNK_FORMAT = "chnkFmt";
+const char* const GENERIC_FORMAT = "gncFmt";
 
 //Buffer elements
 
@@ -34,12 +37,23 @@ const char* const VERTEX_ELEMENT_PACKED_NORM_COLOR = "norCol";
 //Shaders
 
 const char* const CHUNK_SHADER = "chnkSdr";
+const char* const BASIC_SHADER = "bscSdr";
 
 //Uniform sets
 
 const char* const CHUNK_SET = "chnkSet";
 const char* const SCREEN_SET = "scrnSet";
+const char* const BASIC_SET = "bscSet";
 
 //Materials
 
 const char* const CHUNK_MAT = "chnkMat";
+const char* const PLAYER_MAT = "plrMat";
+
+//Textures
+
+const char* const TEST_TEX = "tstTex";
+
+//Meshes
+
+const char* const PLAYER_MESH = "plrMsh";

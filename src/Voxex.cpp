@@ -61,14 +61,17 @@ namespace {
 
 	struct ShaderPaths {
 		ShaderNames chunk;
+		ShaderNames basic;
 	};
 
 	const ShaderPaths glShaders = {
-		{"shaders/glsl/chunk.vert", "shaders/glsl/chunk.frag"}
+		{"shaders/glsl/chunk.vert", "shaders/glsl/chunk.frag"},
+		{"shaders/glsl/generic.vert", "shaders/glsl/basic.frag"}
 	};
 
 	const ShaderPaths vkShaders = {
-		{"shaders/spirv/chunk.vert.spv", "shaders/spirv/chunk.frag.spv"}
+		{"shaders/spirv/chunk.vert.spv", "shaders/spirv/chunk.frag.spv"},
+		{"shaders/spirv/generic.vert.spv", "shaders/spirv/basic.frag.spv"}
 	};
 
 	const ShaderPaths* const shaderFiles = Voxex::USE_VULKAN ? &vkShaders : &glShaders;
@@ -81,10 +84,18 @@ void Voxex::createRenderObjects(RenderInitializer& renderInit) {
 
 	renderInit.createBuffer(CHUNK_VERTEX_BUFFER, chunkBufferSize, BufferType::VERTEX, BufferStorage::DEVICE);
 	renderInit.createBuffer(CHUNK_INDEX_BUFFER, indexSize, BufferType::INDEX, BufferStorage::DEVICE);
+	renderInit.createBuffer(GENERIC_VERTEX_BUFFER, 1'048'576, BufferType::VERTEX, BufferStorage::DEVICE);
+	renderInit.createBuffer(GENERIC_INDEX_BUFFER, 1'048'576, BufferType::INDEX, BufferStorage::DEVICE);
 
 	renderInit.addVertexFormat(CHUNK_FORMAT, VertexFormat({
 		{VERTEX_ELEMENT_POSITION, VertexFormat::ElementType::VEC3},
 		{VERTEX_ELEMENT_PACKED_NORM_COLOR, VertexFormat::ElementType::UINT32}
+	}));
+
+	renderInit.addVertexFormat(GENERIC_FORMAT, VertexFormat({
+		{VERTEX_ELEMENT_POSITION, VertexFormat::ElementType::VEC3},
+		{VERTEX_ELEMENT_NORMAL, VertexFormat::ElementType::VEC3},
+		{VERTEX_ELEMENT_TEXTURE, VertexFormat::ElementType::VEC2}
 	}));
 
 	renderInit.addUniformSet(SCREEN_SET, UniformSetType::PER_SCREEN, 1,
@@ -93,6 +104,13 @@ void Voxex::createRenderObjects(RenderInitializer& renderInit) {
 	);
 
 	renderInit.addUniformSet(CHUNK_SET, UniformSetType::MATERIAL, 1, {});
+	renderInit.addUniformSet(BASIC_SET, UniformSetType::MATERIAL, 1, {
+		{UniformType::SAMPLER_2D, UNIFORM_NAME_KD_TEX, UniformProviderType::MATERIAL, USE_FRAGMENT_SHADER},
+	});
+}
+
+void Voxex::loadTextures(std::shared_ptr<TextureLoader> loader) {
+	loader->loadTexture(TEST_TEX, "textures/test.png", Filter::LINEAR, Filter::LINEAR, true);
 }
 
 void Voxex::loadModels(ModelLoader& loader) {
@@ -100,6 +118,25 @@ void Voxex::loadModels(ModelLoader& loader) {
 	//This will be fixed later!
 	const UniformSet& chunkSet = Engine::instance->getModelManager().getMemoryManager()->getUniformSet(CHUNK_SET);
 	Engine::instance->getModelManager().addMaterial(CHUNK_MAT, Material(CHUNK_MAT, CHUNK_SHADER, CHUNK_SET, chunkSet));
+
+	MaterialCreateInfo playerMat = {
+		.filename = "models/capsule.mtl",
+		.shader = BASIC_SHADER,
+		.uniformSet = BASIC_SET,
+		.viewCull = true,
+	};
+
+	loader.loadMaterial(PLAYER_MAT, playerMat);
+
+	MeshCreateInfo playerMesh = {
+		.filename = "models/capsule.obj",
+		.vertexBuffer = GENERIC_VERTEX_BUFFER,
+		.indexBuffer = GENERIC_INDEX_BUFFER,
+		.vertexFormat = GENERIC_FORMAT,
+		.renderable = true,
+	};
+
+	loader.loadMesh(PLAYER_MESH, playerMesh);
 }
 
 void Voxex::loadShaders(std::shared_ptr<ShaderLoader> loader) {
@@ -112,7 +149,17 @@ void Voxex::loadShaders(std::shared_ptr<ShaderLoader> loader) {
 		.pushConstants = {{UniformType::MAT4, "modelView", UniformProviderType::OBJECT_MODEL_VIEW, USE_VERTEX_SHADER}},
 	};
 
+	ShaderInfo basicInfo = {
+		.vertex = shaderFiles->basic.vertex,
+		.fragment = shaderFiles->basic.fragment,
+		.pass = RenderPass::OPAQUE,
+		.format = GENERIC_FORMAT,
+		.uniformSets = {SCREEN_SET, BASIC_SET},
+		.pushConstants = {{UniformType::MAT4, "modelView", UniformProviderType::OBJECT_MODEL_VIEW, USE_VERTEX_SHADER}},
+	};
+
 	loader->loadShader(CHUNK_SHADER, chunkInfo);
+	loader->loadShader(BASIC_SHADER, basicInfo);
 }
 
 //TODO: This is not how this should be done

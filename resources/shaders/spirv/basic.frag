@@ -16,18 +16,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
 
-#pragma once
+#version 450 core
+#extension GL_ARB_separate_shader_objects : enable
 
-#include "GameInterface.hpp"
+layout(location = 0) in vec3 pos;
+layout(location = 1) in vec3 nor;
+layout(location = 2) in vec2 texCoord;
 
-class Voxex : public GameInterface {
-public:
-	static constexpr bool USE_VULKAN = true;
-	static const UniformSet chunkSet;
+layout(location = 0) out vec4 outColor;
 
-	void createRenderObjects(RenderInitializer& renderInit) override;
-	void loadTextures(std::shared_ptr<TextureLoader> loader) override;
-	void loadModels(ModelLoader& loader) override;
-	void loadShaders(std::shared_ptr<ShaderLoader> loader) override;
-	void loadScreens(DisplayEngine& display) override;
-};
+layout(set = 1, binding = 0) uniform sampler2D tex;
+
+void main() {
+	outColor = texture(tex, texCoord);
+}

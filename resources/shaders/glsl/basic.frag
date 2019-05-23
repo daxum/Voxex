@@ -16,18 +16,16 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
 
-#pragma once
+#version 410 core
 
-#include "GameInterface.hpp"
+in vec3 pos;
+in vec3 norm;
+in vec2 tex;
 
-class Voxex : public GameInterface {
-public:
-	static constexpr bool USE_VULKAN = true;
-	static const UniformSet chunkSet;
+out vec4 outColor;
 
-	void createRenderObjects(RenderInitializer& renderInit) override;
-	void loadTextures(std::shared_ptr<TextureLoader> loader) override;
-	void loadModels(ModelLoader& loader) override;
-	void loadShaders(std::shared_ptr<ShaderLoader> loader) override;
-	void loadScreens(DisplayEngine& display) override;
-};
+uniform sampler2D tex0;
+
+void main() {
+	outColor = texture(tex0, tex);
+}

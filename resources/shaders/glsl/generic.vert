@@ -16,18 +16,31 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  ******************************************************************************/
 
-#pragma once
+#version 430 core
 
-#include "GameInterface.hpp"
+layout(location = 0) in vec3 posIn;
+layout(location = 1) in vec3 normIn;
+layout(location = 2) in vec2 texIn;
 
-class Voxex : public GameInterface {
-public:
-	static constexpr bool USE_VULKAN = true;
-	static const UniformSet chunkSet;
+out vec3 pos;
+out vec3 norm;
+out vec2 tex;
 
-	void createRenderObjects(RenderInitializer& renderInit) override;
-	void loadTextures(std::shared_ptr<TextureLoader> loader) override;
-	void loadModels(ModelLoader& loader) override;
-	void loadShaders(std::shared_ptr<ShaderLoader> loader) override;
-	void loadScreens(DisplayEngine& display) override;
-};
+//Screen set
+layout(binding = 0, std140) uniform ScreenData {
+	uniform mat4 projection;
+	uniform mat4 view;
+} screen;
+
+//Object set
+uniform mat4 modelView;
+
+void main() {
+	vec4 posCameraSpace = modelView * vec4(posIn, 1.0);
+
+	pos = posCameraSpace.xyz;
+	norm = (modelView * vec4(normIn, 0.0)).xyz;
+	tex = texIn;
+
+	gl_Position = screen.projection * posCameraSpace;
+}
