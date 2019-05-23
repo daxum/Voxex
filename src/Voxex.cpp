@@ -162,7 +162,6 @@ void Voxex::loadShaders(std::shared_ptr<ShaderLoader> loader) {
 	loader->loadShader(BASIC_SHADER, basicInfo);
 }
 
-//TODO: This is not how this should be done
 void Voxex::loadScreens(DisplayEngine& display) {
 	std::shared_ptr<Screen> world = std::make_shared<Screen>(display, false);
 	world->addComponentManager<RenderComponentManager>();
