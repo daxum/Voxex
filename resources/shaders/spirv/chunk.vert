@@ -20,12 +20,18 @@
 #extension GL_ARB_separate_shader_objects : enable
 
 layout (location = 0) in vec3 posIn;
-layout (location = 1) in uint normColPack;
+layout (location = 1) in uint normBlockPack;
 
-layout (location = 0) out vec3 pos;
-layout (location = 1) out vec3 color;
-layout (location = 2) out vec3 normal;
-layout (location = 3) out vec3 lightDir;
+//Position in camera space, for lighting
+layout (location = 0) out vec3 posCamSpace;
+//Normal
+layout (location = 1) out vec3 normal;
+//Currently hard-coded light direction
+layout (location = 2) out vec3 lightDir;
+//Position in world space, for getting per-pixel texture coords
+layout (location = 3) out vec2 posWorldSpace;
+//Top left corner of the tex coords for the block type
+layout (location = 4) out vec2 texCoords;
 
 out gl_PerVertex {
 	vec4 gl_Position;
@@ -49,36 +55,29 @@ const vec4 normals[6] = vec4[6](
 	vec4(0.0, -1.0, 0.0, 0.0)
 );
 
-const vec3 colors[20] = vec3[20](
-	vec3(0.200, 0.200, 0.200), //0
-	vec3(0.430, 0.366, 0.075), //1
-	vec3(0.100, 0.900, 0.150), //2
-	vec3(0.900, 0.010, 0.200), //3
-	vec3(0.010, 0.300, 0.950), //4
-	vec3(0.500, 0.500, 0.300), //5
-	vec3(0.300, 0.750, 0.800), //6
-	vec3(1.000, 1.000, 1.000), //7
-	vec3(1.000, 0.000, 0.000), //8
-	vec3(0.000, 1.000, 0.000), //9
-	vec3(0.000, 0.000, 1.000), //10
-	vec3(0.100, 0.100, 0.100), //11
-	vec3(0.200, 0.200, 0.200), //12
-	vec3(0.300, 0.300, 0.300), //13
-	vec3(0.400, 0.400, 0.400), //14
-	vec3(0.500, 0.500, 0.500), //15
-	vec3(0.600, 0.600, 0.600), //16
-	vec3(0.700, 0.700, 0.700), //17
-	vec3(0.800, 0.800, 0.800), //18
-	vec3(0.900, 0.900, 0.900) //19
+//TODO: move to buffer
+const vec2 texLocs[2] = vec2[2](
+	vec2(0.0, 0.0), //0
+	vec2(0.5, 0.0)  //1
 );
 
 void main() {
-	uint normalIndx = normColPack >> 16u;
-	uint colorIndx = normColPack & 0xFFFF;
+	uint normalIndex = normBlockPack >> 16u;
+	uint blockIndex = normBlockPack & 0xFFFF;
 
+	switch (normalIndex) {
+		case 0: posWorldSpace = posIn.xy; break;
+		case 1: posWorldSpace = posIn.yz; break;
+		case 2: posWorldSpace = posIn.xy; break;
+		case 3: posWorldSpace = posIn.yz; break;
+		case 4: posWorldSpace = posIn.xz; break;
+		case 5: posWorldSpace = posIn.xz; break;
+	}
+
+	posCamSpace = vec3(chunk.modelView * vec4(posIn, 1.0));
 	gl_Position = screen.projection * chunk.modelView * vec4(posIn, 1.0);
-	normal = vec3(chunk.modelView * normals[normalIndx]);
-	color = colors[colorIndx];
-	lightDir = (screen.view * vec4(normalize(vec3(-1.0, -1.0, 1.0)), 0.0)).xyz;
-	pos = vec3(chunk.modelView * vec4(posIn, 1.0));
+
+	normal = vec3(chunk.modelView * normals[normalIndex]);
+	lightDir = vec3(screen.view * vec4(normalize(vec3(-1.0, -1.0, 1.0)), 0.0));
+	texCoords = texLocs[blockIndex];
 }

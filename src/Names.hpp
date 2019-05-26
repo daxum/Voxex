@@ -53,6 +53,7 @@ const char* const PLAYER_MAT = "plrMat";
 //Textures
 
 const char* const TEST_TEX = "tstTex";
+const char* const TERRAIN_TEX = "trnTex";
 
 //Meshes
 

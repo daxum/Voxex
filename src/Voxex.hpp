@@ -23,7 +23,6 @@
 class Voxex : public GameInterface {
 public:
 	static constexpr bool USE_VULKAN = true;
-	static const UniformSet chunkSet;
 
 	void createRenderObjects(RenderInitializer& renderInit) override;
 	void loadTextures(std::shared_ptr<TextureLoader> loader) override;

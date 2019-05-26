@@ -103,7 +103,10 @@ void Voxex::createRenderObjects(RenderInitializer& renderInit) {
 		{UniformType::MAT4, "view", UniformProviderType::CAMERA_VIEW, USE_VERTEX_SHADER}}
 	);
 
-	renderInit.addUniformSet(CHUNK_SET, UniformSetType::MATERIAL, 1, {});
+	renderInit.addUniformSet(CHUNK_SET, UniformSetType::MATERIAL, 1, {
+		{UniformType::SAMPLER_2D, UNIFORM_NAME_KD_TEX, UniformProviderType::MATERIAL, USE_FRAGMENT_SHADER},
+	});
+
 	renderInit.addUniformSet(BASIC_SET, UniformSetType::MATERIAL, 1, {
 		{UniformType::SAMPLER_2D, UNIFORM_NAME_KD_TEX, UniformProviderType::MATERIAL, USE_FRAGMENT_SHADER},
 	});
@@ -111,13 +114,16 @@ void Voxex::createRenderObjects(RenderInitializer& renderInit) {
 
 void Voxex::loadTextures(std::shared_ptr<TextureLoader> loader) {
 	loader->loadTexture(TEST_TEX, "textures/test.png", Filter::LINEAR, Filter::LINEAR, true);
+	loader->loadTexture(TERRAIN_TEX, "textures/terrain.png", Filter::NEAREST, Filter::NEAREST, true);
 }
 
 void Voxex::loadModels(ModelLoader& loader) {
-	//Chunks don't have anything in their material at the moment, so skip standard loading
-	//This will be fixed later!
-	const UniformSet& chunkSet = Engine::instance->getModelManager().getMemoryManager()->getUniformSet(CHUNK_SET);
-	Engine::instance->getModelManager().addMaterial(CHUNK_MAT, Material(CHUNK_MAT, CHUNK_SHADER, CHUNK_SET, chunkSet));
+	MaterialCreateInfo chunkMat = {
+		.filename = "models/chunk.mtl",
+		.shader = CHUNK_SHADER,
+		.uniformSet = CHUNK_SET,
+		.viewCull = true,
+	};
 
 	MaterialCreateInfo playerMat = {
 		.filename = "models/capsule.mtl",
@@ -126,6 +132,7 @@ void Voxex::loadModels(ModelLoader& loader) {
 		.viewCull = true,
 	};
 
+	loader.loadMaterial(CHUNK_MAT, chunkMat);
 	loader.loadMaterial(PLAYER_MAT, playerMat);
 
 	MeshCreateInfo playerMesh = {

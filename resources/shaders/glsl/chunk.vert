@@ -19,12 +19,13 @@
 #version 430 core
 
 layout (location = 0) in vec3 posIn;
-layout (location = 1) in uint normColPack;
+layout (location = 1) in uint normBlockPack;
 
 out vec3 pos;
-out vec3 color;
 out vec3 normal;
 out vec3 lightDir;
+out vec2 posWorldSpace;
+out vec2 texBase;
 
 layout(binding = 0, std140) uniform ScreenData {
 	mat4 projection;
@@ -42,36 +43,28 @@ const vec4 normals[6] = vec4[6](
 	vec4(0.0, -1.0, 0.0, 0.0)
 );
 
-const vec3 colors[20] = vec3[20](
-	vec3(0.200, 0.200, 0.200), //0
-	vec3(0.430, 0.366, 0.075), //1
-	vec3(0.100, 0.900, 0.150), //2
-	vec3(0.900, 0.010, 0.200), //3
-	vec3(0.010, 0.300, 0.950), //4
-	vec3(0.500, 0.500, 0.300), //5
-	vec3(0.300, 0.750, 0.800), //6
-	vec3(1.000, 1.000, 1.000), //7
-	vec3(1.000, 0.000, 0.000), //8
-	vec3(0.000, 1.000, 0.000), //9
-	vec3(0.000, 0.000, 1.000), //10
-	vec3(0.100, 0.100, 0.100), //11
-	vec3(0.200, 0.200, 0.200), //12
-	vec3(0.300, 0.300, 0.300), //13
-	vec3(0.400, 0.400, 0.400), //14
-	vec3(0.500, 0.500, 0.500), //15
-	vec3(0.600, 0.600, 0.600), //16
-	vec3(0.700, 0.700, 0.700), //17
-	vec3(0.800, 0.800, 0.800), //18
-	vec3(0.900, 0.900, 0.900) //19
+const vec2 texLocs[2] = vec2[2](
+	vec2(0.0, 0.0), //0
+	vec2(0.5, 0.0)  //1
 );
 
 void main() {
-	uint normalIndx = normColPack >> 16u;
-	uint colorIndx = normColPack & 0xFFFF;
+	uint normalIndex = normBlockPack >> 16u;
+	uint blockIndex = normBlockPack & 0xFFFFu;
 
-	gl_Position = screen.projection * modelView * vec4(posIn, 1.0);
-	normal = vec3(modelView * normals[normalIndx]);
-	color = colors[colorIndx];
-	lightDir = (screen.view * vec4(normalize(vec3(-1.0, -1.0, 1.0)), 0.0)).xyz;
+	switch (normalIndex) {
+		case 0: posWorldSpace = posIn.xy; break;
+		case 1: posWorldSpace = posIn.yz; break;
+		case 2: posWorldSpace = posIn.xy; break;
+		case 3: posWorldSpace = posIn.yz; break;
+		case 4: posWorldSpace = posIn.xz; break;
+		case 5: posWorldSpace = posIn.xz; break;
+	}
+
 	pos = vec3(modelView * vec4(posIn, 1.0));
+	gl_Position = screen.projection * modelView * vec4(posIn, 1.0);
+
+	normal = vec3(modelView * normals[normalIndex]);
+	lightDir = vec3(screen.view * vec4(normalize(vec3(-1.0, -1.0, 1.0)), 0.0));
+	texBase = texLocs[blockIndex];
 }

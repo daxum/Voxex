@@ -183,7 +183,7 @@ std::shared_ptr<Chunk> ChunkLoader::genChunk(const Pos_t& pos) {
 		float adjThreshold = ExMath::clamp(cutoffScale * (1.0f / (256.0f - box.xLength())) + fillThreshold, 0.0f, 0.95f);
 
 		if (percentFull >= adjThreshold) {
-			uint16_t type = 5;//(uint16_t)ExMath::randomInt(0, 19);
+			uint16_t type = 0;
 			chunk.addRegion(Region{type, box});
 		}
 		else if (box.xLength() > minEdge && percentFull > discardThreshold) {
@@ -208,7 +208,7 @@ std::shared_ptr<Chunk> ChunkLoader::genChunk(const Pos_t& pos) {
 	if (chunkBox.max.y <= 0) {
 		Aabb<int64_t> groundBox = chunkBox;
 
-		chunk.addRegion({16, groundBox});
+		chunk.addRegion({1, groundBox});
 	}
 
 	//Add layer of dirt and stone for terrain
@@ -220,10 +220,10 @@ std::shared_ptr<Chunk> ChunkLoader::genChunk(const Pos_t& pos) {
 				int64_t stoneHeight = pos.y + height / 2;
 
 				if (stoneHeight > 0) {
-					chunk.addRegion({16, Aabb<int64_t>({i, 0, j}, {i+1, stoneHeight, j+1})});
+					chunk.addRegion({1, Aabb<int64_t>({i, 0, j}, {i+1, stoneHeight, j+1})});
 				}
 
-				chunk.addRegion({2, Aabb<int64_t>({i, stoneHeight, j}, {i+1, height, j+1})});
+				chunk.addRegion({0, Aabb<int64_t>({i, stoneHeight, j}, {i+1, height, j+1})});
 			}
 		}
 	}
