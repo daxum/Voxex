@@ -98,17 +98,17 @@ void Voxex::createRenderObjects(RenderInitializer& renderInit) {
 		{VERTEX_ELEMENT_TEXTURE, VertexFormat::ElementType::VEC2}
 	}));
 
-	renderInit.addUniformSet(SCREEN_SET, UniformSetType::PER_SCREEN, 1,
-		{{UniformType::MAT4, "projection", UniformProviderType::CAMERA_PROJECTION, USE_VERTEX_SHADER},
-		{UniformType::MAT4, "view", UniformProviderType::CAMERA_VIEW, USE_VERTEX_SHADER}}
+	renderInit.addUniformSet(SCREEN_SET, UniformSetType::PER_SCREEN, 2,
+		{{UniformType::MAT4, "projection", 0, UniformProviderType::CAMERA_PROJECTION, USE_VERTEX_SHADER},
+		{UniformType::MAT4, "view", 0, UniformProviderType::CAMERA_VIEW, USE_VERTEX_SHADER}}
 	);
 
 	renderInit.addUniformSet(CHUNK_SET, UniformSetType::MATERIAL, 1, {
-		{UniformType::SAMPLER_2D, UNIFORM_NAME_KD_TEX, UniformProviderType::MATERIAL, USE_FRAGMENT_SHADER},
+		{UniformType::SAMPLER_2D, UNIFORM_NAME_KD_TEX, 0, UniformProviderType::MATERIAL, USE_FRAGMENT_SHADER},
 	});
 
 	renderInit.addUniformSet(BASIC_SET, UniformSetType::MATERIAL, 1, {
-		{UniformType::SAMPLER_2D, UNIFORM_NAME_KD_TEX, UniformProviderType::MATERIAL, USE_FRAGMENT_SHADER},
+		{UniformType::SAMPLER_2D, UNIFORM_NAME_KD_TEX, 0, UniformProviderType::MATERIAL, USE_FRAGMENT_SHADER},
 	});
 }
 
@@ -153,7 +153,7 @@ void Voxex::loadShaders(std::shared_ptr<ShaderLoader> loader) {
 		.pass = RenderPass::OPAQUE,
 		.format = CHUNK_FORMAT,
 		.uniformSets = {SCREEN_SET, CHUNK_SET},
-		.pushConstants = {{UniformType::MAT4, "modelView", UniformProviderType::OBJECT_MODEL_VIEW, USE_VERTEX_SHADER}},
+		.pushConstants = {{UniformType::MAT4, "modelView", 0, UniformProviderType::OBJECT_MODEL_VIEW, USE_VERTEX_SHADER}},
 	};
 
 	ShaderInfo basicInfo = {
@@ -162,7 +162,7 @@ void Voxex::loadShaders(std::shared_ptr<ShaderLoader> loader) {
 		.pass = RenderPass::OPAQUE,
 		.format = GENERIC_FORMAT,
 		.uniformSets = {SCREEN_SET, BASIC_SET},
-		.pushConstants = {{UniformType::MAT4, "modelView", UniformProviderType::OBJECT_MODEL_VIEW, USE_VERTEX_SHADER}},
+		.pushConstants = {{UniformType::MAT4, "modelView", 0, UniformProviderType::OBJECT_MODEL_VIEW, USE_VERTEX_SHADER}},
 	};
 
 	loader->loadShader(CHUNK_SHADER, chunkInfo);
