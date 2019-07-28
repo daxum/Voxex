@@ -98,26 +98,32 @@ void Voxex::createRenderObjects(RenderInitializer& renderInit) {
 		{VERTEX_ELEMENT_TEXTURE, VertexFormat::ElementType::VEC2}
 	}));
 
-	renderInit.addUniformSet(SCREEN_SET, UniformSetType::PER_SCREEN, 1,
-		{{UniformType::MAT4, "projection", UniformProviderType::CAMERA_PROJECTION, USE_VERTEX_SHADER},
-		{UniformType::MAT4, "view", UniformProviderType::CAMERA_VIEW, USE_VERTEX_SHADER}}
+	renderInit.addUniformSet(SCREEN_SET, UniformSetType::PER_SCREEN, 2,
+		{{UniformType::MAT4, "projection", 0, UniformProviderType::CAMERA_PROJECTION, USE_VERTEX_SHADER},
+		{UniformType::MAT4, "view", 0, UniformProviderType::CAMERA_VIEW, USE_VERTEX_SHADER}}
 	);
 
-	renderInit.addUniformSet(CHUNK_SET, UniformSetType::MATERIAL, 1, {});
+	renderInit.addUniformSet(CHUNK_SET, UniformSetType::MATERIAL, 1, {
+		{UniformType::SAMPLER_2D, UNIFORM_NAME_KD_TEX, 0, UniformProviderType::MATERIAL, USE_FRAGMENT_SHADER},
+	});
+
 	renderInit.addUniformSet(BASIC_SET, UniformSetType::MATERIAL, 1, {
-		{UniformType::SAMPLER_2D, UNIFORM_NAME_KD_TEX, UniformProviderType::MATERIAL, USE_FRAGMENT_SHADER},
+		{UniformType::SAMPLER_2D, UNIFORM_NAME_KD_TEX, 0, UniformProviderType::MATERIAL, USE_FRAGMENT_SHADER},
 	});
 }
 
 void Voxex::loadTextures(std::shared_ptr<TextureLoader> loader) {
 	loader->loadTexture(TEST_TEX, "textures/test.png", Filter::LINEAR, Filter::LINEAR, true);
+	loader->loadTexture(TERRAIN_TEX, "textures/terrain.png", Filter::NEAREST, Filter::NEAREST, true);
 }
 
 void Voxex::loadModels(ModelLoader& loader) {
-	//Chunks don't have anything in their material at the moment, so skip standard loading
-	//This will be fixed later!
-	const UniformSet& chunkSet = Engine::instance->getModelManager().getMemoryManager()->getUniformSet(CHUNK_SET);
-	Engine::instance->getModelManager().addMaterial(CHUNK_MAT, Material(CHUNK_MAT, CHUNK_SHADER, CHUNK_SET, chunkSet));
+	MaterialCreateInfo chunkMat = {
+		.filename = "models/chunk.mtl",
+		.shader = CHUNK_SHADER,
+		.uniformSet = CHUNK_SET,
+		.viewCull = true,
+	};
 
 	MaterialCreateInfo playerMat = {
 		.filename = "models/capsule.mtl",
@@ -126,6 +132,7 @@ void Voxex::loadModels(ModelLoader& loader) {
 		.viewCull = true,
 	};
 
+	loader.loadMaterial(CHUNK_MAT, chunkMat);
 	loader.loadMaterial(PLAYER_MAT, playerMat);
 
 	MeshCreateInfo playerMesh = {
@@ -146,7 +153,7 @@ void Voxex::loadShaders(std::shared_ptr<ShaderLoader> loader) {
 		.pass = RenderPass::OPAQUE,
 		.format = CHUNK_FORMAT,
 		.uniformSets = {SCREEN_SET, CHUNK_SET},
-		.pushConstants = {{UniformType::MAT4, "modelView", UniformProviderType::OBJECT_MODEL_VIEW, USE_VERTEX_SHADER}},
+		.pushConstants = {{UniformType::MAT4, "modelView", 0, UniformProviderType::OBJECT_MODEL_VIEW, USE_VERTEX_SHADER}},
 	};
 
 	ShaderInfo basicInfo = {
@@ -155,14 +162,13 @@ void Voxex::loadShaders(std::shared_ptr<ShaderLoader> loader) {
 		.pass = RenderPass::OPAQUE,
 		.format = GENERIC_FORMAT,
 		.uniformSets = {SCREEN_SET, BASIC_SET},
-		.pushConstants = {{UniformType::MAT4, "modelView", UniformProviderType::OBJECT_MODEL_VIEW, USE_VERTEX_SHADER}},
+		.pushConstants = {{UniformType::MAT4, "modelView", 0, UniformProviderType::OBJECT_MODEL_VIEW, USE_VERTEX_SHADER}},
 	};
 
 	loader->loadShader(CHUNK_SHADER, chunkInfo);
 	loader->loadShader(BASIC_SHADER, basicInfo);
 }
 
-//TODO: This is not how this should be done
 void Voxex::loadScreens(DisplayEngine& display) {
 	std::shared_ptr<Screen> world = std::make_shared<Screen>(display, false);
 	world->addComponentManager<RenderComponentManager>();

@@ -19,24 +19,33 @@
 #version 450 core
 #extension GL_ARB_separate_shader_objects : enable
 
-layout (location = 0) in vec3 pos;
-layout (location = 1) in vec3 color;
-layout (location = 2) in vec3 normal;
-layout (location = 3) in vec3 lightDir;
+layout (location = 0) in vec3 posCamSpace;
+layout (location = 1) in vec3 normal;
+layout (location = 2) in vec3 lightDir;
+layout (location = 3) in vec2 posWorldSpace;
+layout (location = 4) in vec2 texBase;
 
 layout (location = 0) out vec4 outColor;
 
-vec3 directionalBlinnPhong() {
-	vec3 norm = normalize(normal);
-	vec3 position = -normalize(pos);
+layout (set = 1, binding = 0) uniform sampler2D blockMapKd;
 
-	vec3 ambient = color;
-	vec3 diffuse = color * max(0, dot(lightDir, norm));
-	vec3 specular = color * pow(max(0, dot(normalize(lightDir + position), norm)), 200.0);
+vec3 directionalBlinnPhong(vec2 texCoords) {
+	vec3 norm = normalize(normal);
+	vec3 position = -normalize(posCamSpace);
+
+	vec3 colorKd = vec3(texture(blockMapKd, texCoords));
+
+	vec3 ambient = colorKd;
+	vec3 diffuse = colorKd * max(0, dot(lightDir, norm));
+	vec3 specular = colorKd * pow(max(0, dot(normalize(lightDir + position), norm)), 10.0);
 
 	return ambient + diffuse + specular;
 }
 
 void main() {
-	outColor = vec4(directionalBlinnPhong(), 1.0);
+	//TODO: pass this in later
+	const float blockTexSize = 0.5;
+
+	vec2 texCoords = fract(posWorldSpace) * blockTexSize + texBase;
+	outColor = vec4(directionalBlinnPhong(texCoords), 1.0);
 }

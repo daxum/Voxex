@@ -24,18 +24,27 @@ in vec3 pos;
 in vec3 color;
 in vec3 normal;
 in vec3 lightDir;
+in vec2 posWorldSpace;
+in vec2 texBase;
 
-vec3 directionalBlinnPhong() {
+uniform sampler2D blockMapKd;
+
+vec3 directionalBlinnPhong(vec2 texCoords) {
 	vec3 norm = normalize(normal);
 	vec3 position = -normalize(pos);
 
-	vec3 ambient = color;
-	vec3 diffuse = color * max(0, dot(lightDir, norm));
-	vec3 specular = color * pow(max(0, dot(normalize(lightDir + position), norm)), 200.0);
+	vec3 colorKd = vec3(texture(blockMapKd, texCoords));
+
+	vec3 ambient = colorKd;
+	vec3 diffuse = colorKd * max(0, dot(lightDir, norm));
+	vec3 specular = colorKd * pow(max(0, dot(normalize(lightDir + position), norm)), 10.0);
 
 	return ambient + diffuse + specular;
 }
 
 void main() {
-	outColor = vec4(directionalBlinnPhong(), 1.0);
+	const float blockTexSize = 0.5;
+
+	vec2 texCoords = fract(posWorldSpace) * blockTexSize + texBase;
+	outColor = vec4(directionalBlinnPhong(texCoords), 1.0);
 }
