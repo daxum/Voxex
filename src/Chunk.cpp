@@ -38,7 +38,7 @@ ChunkMeshData Chunk::generateMesh() {
 
 //	double end = ExMath::getTimeMillis();
 
-	std::unique_ptr<unsigned char[]> vertexData = std::make_unique<unsigned char[]>(faces.size() * 4 * sizeof(ChunkVert));
+	std::vector<unsigned char> vertexData(faces.size() * 4 * sizeof(ChunkVert), 0);
 	size_t lastVertex = 0;
 	std::vector<uint32_t> indices(faces.size() * 6, 0);
 
@@ -112,7 +112,7 @@ ChunkMeshData Chunk::generateMesh() {
 
 			vert.normColPack = (normal << 16) | type;
 
-			memcpy(&vertexData[lastVertex * sizeof(ChunkVert)], &vert, sizeof(ChunkVert));
+			memcpy(&vertexData.data()[lastVertex * sizeof(ChunkVert)], &vert, sizeof(ChunkVert));
 			lastVertex++;
 		}
 
@@ -143,7 +143,7 @@ ChunkMeshData Chunk::generateMesh() {
 
 	ChunkMeshData out = {
 		.name = modelName,
-		.mesh = Mesh(buffers, format, vertexData.get(), lastVertex * sizeof(ChunkVert), indices, box, radius),
+		.mesh = Mesh(buffers, format, std::move(vertexData), std::move(indices), box, radius),
 	};
 
 //	double vertEnd = ExMath::getTimeMillis();
