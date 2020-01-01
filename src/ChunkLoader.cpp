@@ -1,6 +1,6 @@
 /******************************************************************************
  * Voxex - An experiment with sparse voxel terrain
- * Copyright (C) 2019
+ * Copyright (C) 2019, 2020
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -145,7 +145,11 @@ void ChunkLoader::update(Screen* screen) {
 
 std::shared_ptr<Chunk> ChunkLoader::getChunk(glm::vec3 pos) {
 	Pos_t truncPos = pos;
-	truncPos /= 256l;
+	truncPos.z = -truncPos.z;
+	if (pos.x < 0) truncPos.x -= 256l;
+	if (pos.y < 0) truncPos.y -= 256l;
+	if (pos.z > 0) truncPos.z -= 256l;
+	truncPos = (truncPos / 256l) * 256l;
 
 	if (chunkMap.count(truncPos)) {
 		return chunkMap.at(truncPos);

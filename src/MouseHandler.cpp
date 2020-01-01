@@ -1,6 +1,6 @@
 /******************************************************************************
  * Voxex - An experiment with sparse voxel terrain
- * Copyright (C) 2019
+ * Copyright (C) 2019, 2020
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,8 +27,15 @@ void MouseHandler::update(Screen* screen) {
 
 	if (hitObject.hitComp && hitChunk && hitObject.hitComp->getParent() == hitChunk->getObject()) {
 		lockParent()->getComponent<RenderComponent>()->setHidden(false);
-		Pos_t hitPos = hitObject.hitPos;
-		boxPos = glm::vec3(hitPos) + glm::vec3(0.5f, 0.5f, 0.5f);
+
+		glm::vec3 normal = hitObject.hitNormal;
+		//Has all components as 1 except the original normal component
+		glm::vec3 invNormal = glm::abs(glm::abs(normal) - glm::vec3(1, 1, 1));
+
+		glm::vec3 normalComp = hitObject.hitPos - normal / 2.0f;
+		glm::vec3 otherComp = glm::trunc(hitObject.hitPos) + glm::sign(hitObject.hitPos) / 2.0f;
+
+		boxPos = normalComp * glm::abs(normal) + otherComp * invNormal;
 	}
 	else {
 		lockParent()->getComponent<RenderComponent>()->setHidden(true);

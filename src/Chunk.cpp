@@ -1,6 +1,6 @@
 /******************************************************************************
  * Voxex - An experiment with sparse voxel terrain
- * Copyright (C) 2019
+ * Copyright (C) 2019, 2020
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -171,7 +171,7 @@ void Chunk::createObject() {
 	Engine::instance->getModelManager().addMesh(data.name, std::move(data.mesh), false);
 
 	object->addComponent<RenderComponent>(CHUNK_MAT, data.name);
-	glm::vec3 blockPos = box.min;
+	glm::vec3 blockPos = box.getCenter();
 	blockPos.z = -blockPos.z;
 	object->addComponent<PhysicsComponent>(std::make_shared<PhysicsObject>(data.name, blockPos));
 }
