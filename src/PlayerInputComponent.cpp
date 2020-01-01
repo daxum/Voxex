@@ -62,8 +62,8 @@ void PlayerInputComponent::update(Screen* screen) {
 	mob->move(newVelocity);
 
 	if (setTarget) {
-		PhysicsComponent* comp = world->raytraceUnderMouse();
-		mob->setTarget(comp);
+		RaytraceResult hitObject = world->raytraceUnderMouse();
+		mob->setTarget(hitObject.hitComp);
 		setTarget = false;
 	}
 

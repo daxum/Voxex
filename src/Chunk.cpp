@@ -128,7 +128,7 @@ ChunkMeshData Chunk::generateMesh() {
 		indexData[index + 2] = val + 8589934592ul;
 	}
 
-	std::string modelName = "Chunk_" + std::to_string(box.min.x) + "_" + std::to_string(box.min.y) + "_" + std::to_string(box.min.z);
+	std::string modelName = "Chunk_" + std::to_string(box.min.x) + "_" + std::to_string(box.min.y) + "_" + std::to_string(box.min.z) + "_t" + std::to_string(loadTimer);
 
 	Mesh::BufferInfo buffers = {
 		.vertex = Engine::instance->getModelManager().getMemoryManager()->getBuffer(CHUNK_VERTEX_BUFFER),

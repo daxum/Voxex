@@ -70,11 +70,11 @@ void Mob::update(Screen* screen) {
 
 	glm::vec3 pos = physics->getTranslation();
 
-	bool onGround = world->raytraceSingle(pos, pos - glm::vec3(0.0, 0.876, 0.0)) != nullptr ||
-					world->raytraceSingle(pos + glm::vec3(-0.25, 0.0, -0.25), pos + glm::vec3(-0.35, -0.78, -0.35)) != nullptr ||
-					world->raytraceSingle(pos + glm::vec3(0.25, 0.0, 0.25), pos + glm::vec3(0.35, -0.78, 0.35)) != nullptr ||
-					world->raytraceSingle(pos + glm::vec3(-0.25, 0.0, 0.25), pos + glm::vec3(-0.35, -0.78, 0.35)) != nullptr ||
-					world->raytraceSingle(pos + glm::vec3(0.25, 0.0, -0.25), pos + glm::vec3(0.35, -0.78, -0.35)) != nullptr;
+	bool onGround = world->raytraceSingle(pos, pos - glm::vec3(0.0, 0.876, 0.0)).hitComp != nullptr ||
+					world->raytraceSingle(pos + glm::vec3(-0.25, 0.0, -0.25), pos + glm::vec3(-0.35, -0.78, -0.35)).hitComp != nullptr ||
+					world->raytraceSingle(pos + glm::vec3(0.25, 0.0, 0.25), pos + glm::vec3(0.35, -0.78, 0.35)).hitComp != nullptr ||
+					world->raytraceSingle(pos + glm::vec3(-0.25, 0.0, 0.25), pos + glm::vec3(-0.35, -0.78, 0.35)).hitComp != nullptr ||
+					world->raytraceSingle(pos + glm::vec3(0.25, 0.0, -0.25), pos + glm::vec3(0.35, -0.78, -0.35)).hitComp != nullptr;
 
 	state->flags.set(MobState::Flags::ON_GROUND, onGround);
 

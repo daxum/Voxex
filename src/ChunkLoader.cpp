@@ -143,6 +143,17 @@ void ChunkLoader::update(Screen* screen) {
 	tick++;
 }
 
+std::shared_ptr<Chunk> ChunkLoader::getChunk(glm::vec3 pos) {
+	Pos_t truncPos = pos;
+	truncPos /= 256l;
+
+	if (chunkMap.count(truncPos)) {
+		return chunkMap.at(truncPos);
+	}
+
+	return std::shared_ptr<Chunk>();
+}
+
 void ChunkLoader::addChunk(Screen* screen, std::shared_ptr<Chunk> chunk) {
 	Pos_t chunkPos = chunk->getBox().min;
 

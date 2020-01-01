@@ -62,11 +62,11 @@ void Adventurer::update(Screen* screen) {
 
 		std::shared_ptr<PhysicsComponent> physics = getPhysics();
 
-		std::vector<PhysicsComponent*> hits = getPhysicsWorld(screen)->raytraceAll(physics->getTranslation(), physics->getTranslation() + end);
+		std::vector<RaytraceResult> hits = getPhysicsWorld(screen)->raytraceAll(physics->getTranslation(), physics->getTranslation() + end);
 
-		for (PhysicsComponent* hit : hits) {
-			glm::vec3 impulse = glm::normalize(hit->getTranslation() - physics->getTranslation()) * 0.1f;
-			hit->applyImpulse(impulse);
+		for (RaytraceResult hit : hits) {
+			glm::vec3 impulse = glm::normalize(hit.hitComp->getTranslation() - physics->getTranslation()) * 0.1f;
+			hit.hitComp->applyImpulse(impulse);
 		}
 
 		float startRot = -(maxRot / 2.0f);

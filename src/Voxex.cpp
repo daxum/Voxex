@@ -29,6 +29,7 @@
 #include "Mobs/Adventurer.hpp"
 #include "Mobs/BoxMonster.hpp"
 #include "FollowCamera.hpp"
+#include "MouseHandler.hpp"
 
 namespace {
 #pragma GCC diagnostic push
@@ -143,7 +144,17 @@ void Voxex::loadModels(ModelLoader& loader) {
 		.renderable = true,
 	};
 
+	MeshCreateInfo selectMesh = {
+		.filename = "models/cube.obj",
+		.vertexBuffer = GENERIC_VERTEX_BUFFER,
+		.indexBuffer = GENERIC_INDEX_BUFFER,
+		.vertexFormat = GENERIC_FORMAT,
+		.renderable = true,
+
+	};
+
 	loader.loadMesh(PLAYER_MESH, playerMesh);
+	loader.loadMesh(SELECT_MESH, selectMesh);
 }
 
 void Voxex::loadShaders(std::shared_ptr<ShaderLoader> loader) {
@@ -190,6 +201,12 @@ void Voxex::loadScreens(DisplayEngine& display) {
 	chunkLoader->getComponent<ChunkLoader>()->addLoader(player, 1, 3);
 
 	world->addObject(player);
+
+	std::shared_ptr<Object> selectBox = std::make_shared<Object>();
+	selectBox->addComponent<MouseHandler>(chunkLoader->getComponent<ChunkLoader>());
+	selectBox->addComponent<RenderComponent>(PLAYER_MAT, SELECT_MESH);
+
+	world->addObject(selectBox);
 	world->setCamera(std::make_shared<FollowCamera>(player));
 
 	display.pushScreen(world);

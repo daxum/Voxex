@@ -58,3 +58,4 @@ const char* const TERRAIN_TEX = "trnTex";
 //Meshes
 
 const char* const PLAYER_MESH = "plrMsh";
+const char* const SELECT_MESH = "sltMsh";

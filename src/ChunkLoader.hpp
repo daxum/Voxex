@@ -48,6 +48,14 @@ public:
 		chunkLoaders.push_back({object, critDist, prefDist});
 	}
 
+	/**
+	 * Returns the chunk the given position is inside, preferring the chunk farther
+	 * from zero if on a border.
+	 * @param pos The position to get the chunk for, in world coordinates.
+	 * @return The chunk at the given position, or nullptr if none is loaded.
+	 */
+	std::shared_ptr<Chunk> getChunk(glm::vec3 pos);
+
 private:
 	struct PosHash {
 		size_t operator()(const Pos_t& pos) const noexcept {

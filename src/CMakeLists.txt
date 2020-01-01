@@ -21,6 +21,7 @@ add_executable(voxex
 	Mobs/Mob.cpp
 	PlayerInputComponent.cpp
 	FollowCamera.cpp
+	MouseHandler.cpp
 )
 
 set_target_properties(voxex PROPERTIES

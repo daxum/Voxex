@@ -44,7 +44,7 @@ int main(int argc, char** argv) {
 	config.loaderLog.mask = INFO | WARN | ERROR | FATAL;
 
 	config.modelLog.type = LogType::STDOUT;
-	config.modelLog.mask = INFO | WARN | ERROR | FATAL;
+	config.modelLog.mask = DEBUG | INFO | WARN | ERROR | FATAL;
 
 	config.componentLog.type =  LogType::STDOUT;
 	config.componentLog.mask = INFO | WARN | ERROR | FATAL;
