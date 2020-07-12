@@ -20,7 +20,7 @@
 #include "Components/RenderComponent.hpp"
 
 void MouseHandler::update(Screen* screen) {
-	std::shared_ptr<PhysicsComponentManager> world = screen->getManager<PhysicsComponentManager>(PHYSICS_COMPONENT_NAME);
+	std::shared_ptr<PhysicsManager> world = screen->getManager<PhysicsManager>(PHYSICS_COMPONENT_NAME);
 
 	RaytraceResult hitObject = world->raytraceUnderMouse();
 	std::shared_ptr<Chunk> hitChunk = chunkLoader->getChunk(hitObject.hitPos);

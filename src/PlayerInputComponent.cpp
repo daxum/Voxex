@@ -1,6 +1,6 @@
 /******************************************************************************
  * Voxex - An experiment with sparse voxel terrain
- * Copyright (C) 2019
+ * Copyright (C) 2019, 2020
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,20 +18,18 @@
 
 #include "PlayerInputComponent.hpp"
 #include "Components/PhysicsComponent.hpp"
-#include "Components/PhysicsComponentManager.hpp"
+#include "Components/PhysicsManager.hpp"
 #include "Mobs/MobState.hpp"
 #include "Mobs/Mob.hpp"
 #include "FollowCamera.hpp"
 
 void PlayerInputComponent::update(Screen* screen) {
-	lastScreen = screen;
-
 	InputHandler& handler = screen->getInputHandler();
 	std::shared_ptr<FollowCamera> camera = std::static_pointer_cast<FollowCamera>(screen->getCamera());
 	std::shared_ptr<Mob> mob = lockParent()->getComponent<Mob>(UPDATE_COMPONENT_NAME);
 	std::shared_ptr<MobState> state = mob->getState();
 	std::shared_ptr<PhysicsComponent> physics = mob->getPhysics();
-	std::shared_ptr<PhysicsComponentManager> world = mob->getPhysicsWorld(screen);
+	std::shared_ptr<PhysicsManager> world = mob->getPhysicsWorld(screen);
 
 	glm::vec3 newVelocity(0.0, 0.0, 0.0);
 	glm::vec3 focalXz = camera->getFocalPoint();
@@ -61,19 +59,13 @@ void PlayerInputComponent::update(Screen* screen) {
 
 	mob->move(newVelocity);
 
-	if (setTarget) {
-		RaytraceResult hitObject = world->raytraceUnderMouse();
-		mob->setTarget(hitObject.hitComp);
-		setTarget = false;
-	}
-
 	//For if you get stuck - debugging only
 	if (handler.isKeyPressed(Key::SLASH)) {
 		physics->applyImpulse({6.1, 5.0, 6.1});
 	}
 }
 
-bool PlayerInputComponent::onEvent(const InputHandler* handler, const std::shared_ptr<const InputEvent> event) {
+bool PlayerInputComponent::onEvent(Screen* screen, const InputHandler* handler, const std::shared_ptr<const InputEvent> event) {
 	if (event->type == EventType::MOUSE_CLICK) {
 		std::shared_ptr<const MouseClickEvent> click = std::static_pointer_cast<const MouseClickEvent>(event);
 
@@ -82,15 +74,16 @@ bool PlayerInputComponent::onEvent(const InputHandler* handler, const std::share
 			return true;
 		}
 		else if (click->button == MouseButton::RIGHT && click->action == MouseAction::PRESS) {
-			//TODO: pass screen to events
-			setTarget = true;
+			std::shared_ptr<Mob> mob = lockParent()->getComponent<Mob>(UPDATE_COMPONENT_NAME);
+			RaytraceResult hitObject = mob->getPhysicsWorld(screen)->raytraceUnderMouse();
+			mob->setTarget(hitObject.hitComp);
 		}
 	}
 	else if (event->type == EventType::KEY) {
 		std::shared_ptr<const KeyEvent> keyEvent = std::static_pointer_cast<const KeyEvent>(event);
 
 		if (keyEvent->action == KeyAction::PRESS) {
-			std::shared_ptr<FollowCamera> camera = std::static_pointer_cast<FollowCamera>(lastScreen->getCamera());
+			std::shared_ptr<FollowCamera> camera = std::static_pointer_cast<FollowCamera>(screen->getCamera());
 
 			switch (keyEvent->key) {
 				case Key::LEFT_ALT: camera->resetFocalPoint(); return true;

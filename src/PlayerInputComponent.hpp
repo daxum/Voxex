@@ -1,6 +1,6 @@
 /******************************************************************************
  * Voxex - An experiment with sparse voxel terrain
- * Copyright (C) 2019
+ * Copyright (C) 2019, 2020
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,14 +24,9 @@ class PlayerInputComponent : public AIComponent{
 public:
 	static const std::string getName() { return AI_COMPONENT_NAME; }
 
-	PlayerInputComponent() : AIComponent(true), setTarget(false), lastScreen(nullptr) {}
+	PlayerInputComponent() : AIComponent(true) {}
 
 	void update(Screen* screen) override;
 
-	bool onEvent(const InputHandler* handler, const std::shared_ptr<const InputEvent> event) override;
-
-private:
-	bool setTarget;
-	//Temp hack, needs engine changes to pass screen to onEvent.
-	Screen* lastScreen;
+	bool onEvent(Screen* screen, const InputHandler* handler, const std::shared_ptr<const InputEvent> event) override;
 };

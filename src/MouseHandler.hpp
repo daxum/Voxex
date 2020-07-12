@@ -1,6 +1,6 @@
 /******************************************************************************
  * Voxex - An experiment with sparse voxel terrain
- * Copyright (C) 2019
+ * Copyright (C) 2019, 2020
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 #include "Components/UpdateComponent.hpp"
 #include "ObjectPhysicsInterface.hpp"
 #include "ChunkLoader.hpp"
-#include "Components/PhysicsComponentManager.hpp"
+#include "Components/PhysicsManager.hpp"
 
 class MouseHandler : public UpdateComponent, ObjectPhysicsInterface {
 public:

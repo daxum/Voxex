@@ -1,6 +1,6 @@
 /******************************************************************************
  * Voxex - An experiment with sparse voxel terrain
- * Copyright (C) 2019
+ * Copyright (C) 2019, 2020
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -182,10 +182,10 @@ void Voxex::loadShaders(std::shared_ptr<ShaderLoader> loader) {
 
 void Voxex::loadScreens(DisplayEngine& display) {
 	std::shared_ptr<Screen> world = std::make_shared<Screen>(display, false);
-	world->addComponentManager<RenderComponentManager>();
-	world->addComponentManager<PhysicsComponentManager>();
-	world->addComponentManager<AIComponentManager>();
-	world->addComponentManager<UpdateComponentManager>();
+	world->addComponentManager<RenderManager>();
+	world->addComponentManager<PhysicsManager>();
+	world->addComponentManager<AIManager>();
+	world->addComponentManager<UpdateManager>();
 
 	std::shared_ptr<Object> chunkLoader = std::make_shared<Object>();
 	chunkLoader->addComponent<ChunkLoader>();

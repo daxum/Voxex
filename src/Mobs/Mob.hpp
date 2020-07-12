@@ -1,6 +1,6 @@
 /******************************************************************************
  * Voxex - An experiment with sparse voxel terrain
- * Copyright (C) 2019
+ * Copyright (C) 2019, 2020
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
 
 #include "Components/UpdateComponent.hpp"
 #include "MobState.hpp"
-#include "Components/PhysicsComponentManager.hpp"
+#include "Components/PhysicsManager.hpp"
 
 class Mob : public UpdateComponent {
 public:
@@ -88,8 +88,8 @@ public:
 	 * @param screen The screen to fetch the manager from.
 	 * @return The physics component manager for the given screen.
 	 */
-	std::shared_ptr<PhysicsComponentManager> getPhysicsWorld(Screen* screen) {
-		return std::static_pointer_cast<PhysicsComponentManager>(screen->getManager(PHYSICS_COMPONENT_NAME));
+	std::shared_ptr<PhysicsManager> getPhysicsWorld(Screen* screen) {
+		return std::static_pointer_cast<PhysicsManager>(screen->getManager(PHYSICS_COMPONENT_NAME));
 	}
 
 	/**

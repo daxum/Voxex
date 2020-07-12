@@ -1,6 +1,6 @@
 /******************************************************************************
  * Voxex - An experiment with sparse voxel terrain
- * Copyright (C) 2019
+ * Copyright (C) 2019, 2020
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -65,7 +65,7 @@ void Mob::setTarget(PhysicsComponent* comp) {
 
 void Mob::update(Screen* screen) {
 	std::shared_ptr<MobState> state = getState();
-	std::shared_ptr<PhysicsComponentManager> world = getPhysicsWorld(screen);
+	std::shared_ptr<PhysicsManager> world = getPhysicsWorld(screen);
 	std::shared_ptr<PhysicsComponent> physics = getPhysics();
 
 	glm::vec3 pos = physics->getTranslation();
@@ -105,7 +105,7 @@ void Mob::update(Screen* screen) {
 
 	//If targeting an object, turn to face it.
 	if (target.lock()) {
-		glm::vec3 targetPos = target.lock()->getComponent<Mob>(UPDATE_COMPONENT_NAME)->getTarget()->getTranslation();
+		glm::vec3 targetPos = target.lock()->getComponent<PhysicsComponent>(PHYSICS_COMPONENT_NAME)->getTranslation();
 		state->rotation = glm::conjugate(glm::quat(glm::lookAt(pos, targetPos, glm::vec3(0.0, 1.0, 0.0))));
 	}
 
