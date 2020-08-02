@@ -28,5 +28,5 @@ public:
 
 	void update(Screen* screen) override;
 
-	bool onEvent(Screen* screen, const InputHandler* handler, const std::shared_ptr<const InputEvent> event) override;
+	bool onEvent(const std::shared_ptr<const Event> event) override;
 };

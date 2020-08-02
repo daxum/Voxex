@@ -24,7 +24,7 @@
 #include "FollowCamera.hpp"
 
 void PlayerInputComponent::update(Screen* screen) {
-	InputHandler& handler = screen->getInputHandler();
+	std::shared_ptr<InputMap> map = screen->getInputMap();
 	std::shared_ptr<FollowCamera> camera = std::static_pointer_cast<FollowCamera>(screen->getCamera());
 	std::shared_ptr<Mob> mob = lockParent()->getComponent<Mob>(UPDATE_COMPONENT_NAME);
 	std::shared_ptr<MobState> state = mob->getState();
@@ -37,36 +37,38 @@ void PlayerInputComponent::update(Screen* screen) {
 	glm::vec3 forward = glm::normalize(physics->getTranslation() - focalXz);
 	glm::vec3 side = glm::cross(forward, glm::vec3(0.0, 1.0, 0.0));
 
-	if (handler.isKeyPressed(Key::A)) {
+	if (map->isKeyPressed(Key::A)) {
 		newVelocity -= side;
 	}
 
-	if (handler.isKeyPressed(Key::W)) {
+	if (map->isKeyPressed(Key::W)) {
 		newVelocity += forward;
 	}
 
-	if (handler.isKeyPressed(Key::D)) {
+	if (map->isKeyPressed(Key::D)) {
 		newVelocity += side;
 	}
 
-	if (handler.isKeyPressed(Key::S)) {
+	if (map->isKeyPressed(Key::S)) {
 		newVelocity -= forward;
 	}
 
-	if (handler.isKeyPressed(Key::SPACE)) {
+	if (map->isKeyPressed(Key::SPACE)) {
 		mob->jump(newVelocity);
 	}
 
 	mob->move(newVelocity);
 
 	//For if you get stuck - debugging only
-	if (handler.isKeyPressed(Key::SLASH)) {
+	if (map->isKeyPressed(Key::SLASH)) {
 		physics->applyImpulse({6.1, 5.0, 6.1});
 	}
 }
 
-bool PlayerInputComponent::onEvent(Screen* screen, const InputHandler* handler, const std::shared_ptr<const InputEvent> event) {
-	if (event->type == EventType::MOUSE_CLICK) {
+bool PlayerInputComponent::onEvent(const std::shared_ptr<const Event> event) {
+	Screen* screen = lockParent()->getScreen();
+
+	if (event->type == MouseClickEvent::EVENT_TYPE) {
 		std::shared_ptr<const MouseClickEvent> click = std::static_pointer_cast<const MouseClickEvent>(event);
 
 		if (click->button == MouseButton::LEFT && click->action == MouseAction::PRESS) {
@@ -79,7 +81,7 @@ bool PlayerInputComponent::onEvent(Screen* screen, const InputHandler* handler, 
 			mob->setTarget(hitObject.hitComp);
 		}
 	}
-	else if (event->type == EventType::KEY) {
+	else if (event->type == KeyEvent::EVENT_TYPE) {
 		std::shared_ptr<const KeyEvent> keyEvent = std::static_pointer_cast<const KeyEvent>(event);
 
 		if (keyEvent->action == KeyAction::PRESS) {
