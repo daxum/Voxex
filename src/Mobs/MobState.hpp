@@ -20,7 +20,7 @@
 
 #include <bitset>
 
-#include "Object.hpp"
+#include "Display/Object.hpp"
 
 struct MobStats {
 	//How fast the mob moves, in m/s.

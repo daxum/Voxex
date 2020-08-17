@@ -22,10 +22,12 @@
 
 #include <glm/glm.hpp>
 
-#include "Camera.hpp"
+#include "Display/Camera.hpp"
 #include "Engine.hpp"
 #include "ExtraMath.hpp"
 #include "SplineAnimation.hpp"
+#include "Display/ScreenChangeEvent.hpp"
+#include "Display/WindowSizeEvent.hpp"
 
 class AnimatedCamera : public Camera {
 public:
@@ -46,11 +48,15 @@ public:
 		return projection;
 	}
 
-	void setProjection() override {
-		float width = Engine::instance->getWindowInterface().getWindowWidth();
-		float height = Engine::instance->getWindowInterface().getWindowHeight();
+	bool onEvent(const std::shared_ptr<const Event> event) override {
+		if (event->type == WindowSizeEvent::EVENT_TYPE || event->type == ScreenChangeEvent::EVENT_TYPE) {
+			float width = Engine::instance->getWindowInterface().getWindowWidth();
+			float height = Engine::instance->getWindowInterface().getWindowHeight();
 
-		projection = glm::perspective(ExMath::PI / 4.0f, width / height, near, far);
+			projection = glm::perspective(ExMath::PI / 4.0f, width / height, near, far);
+		}
+
+		return false;
 	}
 
 	std::pair<float, float> getNearFar() const override {

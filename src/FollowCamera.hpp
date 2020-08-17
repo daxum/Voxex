@@ -22,9 +22,9 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
-#include "Camera.hpp"
-#include "Object.hpp"
-#include "Screen.hpp"
+#include "Display/Camera.hpp"
+#include "Display/Object.hpp"
+#include "Display/Screen.hpp"
 #include "ExtraMath.hpp"
 #include "Mobs/Mob.hpp"
 #include "Engine.hpp"
@@ -64,7 +64,7 @@ public:
 	 * Tells the camera to set its projection matrix. This is mainly called
 	 * when the window's size changes.
 	 */
-	void setProjection() override;
+	bool onEvent(const std::shared_ptr<const Event> event) override;
 
 	/**
 	 * Returns the near and far planes, for view culling.

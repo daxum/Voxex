@@ -17,12 +17,18 @@
  ******************************************************************************/
 
 #include "FollowCamera.hpp"
+#include "Display/ScreenChangeEvent.hpp"
+#include "Display/WindowSizeEvent.hpp"
 
-void FollowCamera::setProjection() {
-	float width = Engine::instance->getWindowInterface().getWindowWidth();
-	float height = Engine::instance->getWindowInterface().getWindowHeight();
+bool FollowCamera::onEvent(const std::shared_ptr<const Event> event) {
+	if (event->type == WindowSizeEvent::EVENT_TYPE || event->type == ScreenChangeEvent::EVENT_TYPE) {
+		float width = Engine::instance->getWindowInterface().getWindowWidth();
+		float height = Engine::instance->getWindowInterface().getWindowHeight();
 
-	projection = glm::perspective(ExMath::PI / 4.0f, width / height, near, far);
+		projection = glm::perspective(ExMath::PI / 4.0f, width / height, near, far);
+	}
+
+	return false;
 }
 
 void FollowCamera::update() {

@@ -19,7 +19,7 @@
 #pragma once
 
 #include "Components/UpdateComponent.hpp"
-#include "ObjectPhysicsInterface.hpp"
+#include "Display/ObjectPhysicsInterface.hpp"
 #include "ChunkLoader.hpp"
 #include "Components/PhysicsManager.hpp"
 
